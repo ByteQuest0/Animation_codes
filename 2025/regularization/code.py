@@ -1,5 +1,491 @@
 from manimlib import *
 import numpy as np
+import numpy as np
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+
+class RegL1andL2(Scene):
+    def construct(self):
+
+        self.camera.frame.shift(UP * 0.23)
+        np.random.seed(42)
+
+        self.camera.frame.save_state()
+        
+        # Main dataset
+        num_points = 17
+        X = np.linspace(0, 4, num_points)
+        y = 0.5 * X**2 - X + 2 + np.random.randn(num_points) * 0.3 + 0.3
+        
+        X = X[:-2]
+        y = y[:-2]
+        X += 0.44
+        X_ = X.reshape(-1,1)
+        
+        def poly_fit_predict(X, y, degree):
+            poly = PolynomialFeatures(degree)
+            X_poly = poly.fit_transform(X)
+            model = LinearRegression()
+            model.fit(X_poly, y)
+            y_pred = model.predict(X_poly)
+            return model, y_pred, poly
+        
+        model_lin, _, _ = poly_fit_predict(X_, y, degree=1)
+        model_good, _, _ = poly_fit_predict(X_, y, degree=2)
+        overfit_degree = min(8, len(X)-1)
+        model_over, _, _ = poly_fit_predict(X_, y, degree=overfit_degree)
+        
+        axes = Axes(
+            x_range=[0,4,1], y_range=[0,8,1],
+            width=10, height=6,
+            axis_config={"include_tip": True, "include_numbers": False, "tick_size": 0, "stroke_width":6}
+        ).move_to(ORIGIN)
+        
+        data_points = VGroup()
+        for i in range(len(X)):
+            data_points.add(Dot(axes.c2p(X[i], y[i]), radius=0.13).set_color(YELLOW))
+        
+        linear_curve = axes.get_graph(lambda x: model_lin.intercept_ + model_lin.coef_[1]*x,
+                                      x_range=[0.1,4.4], color=BLUE_C).set_stroke(width=9)
+        
+        x_start = X[0]-0.06
+        x_end = X[-1]+0.06
+        def overfit_func(x):
+            x_poly = PolynomialFeatures(overfit_degree).fit_transform([[x]])
+            return model_over.predict(x_poly)[0]
+        overfit_curve = axes.get_graph(overfit_func, x_range=[x_start,x_end], color="#ff0000").set_stroke(width=9)
+        
+        generalized_curve = axes.get_graph(lambda x: model_good.intercept_ + model_good.coef_[1]*x + model_good.coef_[2]*x**2,
+                                           x_range=[0.13,4.13], color="#a305ff").set_stroke(width=9)
+        
+        y_label = Tex("y", font_size=68).next_to(axes.y_axis.get_top(), UP)
+        x_label = Tex("x", font_size=68).next_to(axes.x_axis.get_right(), RIGHT)
+        
+        # Main animation
+        self.play(ShowCreation(axes), Write(x_label), Write(y_label), run_time=1.5)
+        self.play(FadeIn(data_points), run_time=1)
+        self.play(ShowCreation(linear_curve), run_time=2)
+        self.wait(2)
+        self.play(Transform(linear_curve, overfit_curve), run_time=1.5)
+        self.wait(2)
+        self.play(Transform(linear_curve, generalized_curve), run_time=1.5)
+        self.wait(2)
+
+
+        # Move camera further right
+        camera_shift = 14*RIGHT + 3.7*RIGHT
+        
+        # Top small overfit graph (far right)
+        small_axes_over = Axes(
+            x_range=[0,4,1], y_range=[0,8,1],
+            width=5, height=3,
+            axis_config={"include_tip": True, "include_numbers": False, "tick_size": 0, "stroke_width":6}
+        ).shift(RIGHT*14 + UP*2)
+        
+        # Dots for top graph
+        small_data_points_top = VGroup()
+        for i in range(len(X)):
+            small_data_points_top.add(Dot(
+                small_axes_over.c2p(X[i], y[i]),
+                radius=0.08, color=YELLOW
+            ).set_color(YELLOW))
+        
+        small_over_curve = small_axes_over.get_graph(overfit_func, x_range=[x_start,x_end], color="#ff0000").set_stroke(width=8).set_z_index(1)
+        over_eq = Tex(
+            r"y = w_4 x^4 + w_3 x^3 + w_2 x^2 + w_1 x", font_size=53
+        ).next_to(small_axes_over, RIGHT, buff=0.5)
+        
+        # Bottom small generalized graph (far right)
+        small_axes_gen = Axes(
+            x_range=[0,4,1], y_range=[0,8,1],
+            width=5, height=3,
+            axis_config={"include_tip": True, "include_numbers": False, "tick_size": 0, "stroke_width":6}
+        ).next_to(small_axes_over, DOWN, buff=1)
+        
+        # Dots for bottom graph
+        small_data_points_bottom = VGroup()
+        for i in range(len(X)):
+            small_data_points_bottom.add(Dot(
+                small_axes_gen.c2p(X[i], y[i]),
+                radius=0.08, color=YELLOW
+            ).set_color(YELLOW))
+        
+        small_gen_curve = small_axes_gen.get_graph(
+            lambda x: model_good.intercept_ + model_good.coef_[1]*x + model_good.coef_[2]*x**2,
+            x_range=[0.13,4.13], color="#a305ff"
+        ).set_stroke(width=8).set_z_index(1)
+        gen_eq = Tex(
+            r"y = w_2 x^2 + w_1 x", font_size=53
+        ).next_to(small_axes_gen, RIGHT, buff=1.99)
+        
+
+        # Show small graphs, curves, dots, dotted line, and equations
+        self.play(
+            self.camera.frame.animate.shift(camera_shift).shift(DOWN*0.266).scale(1.045),
+            ShowCreation(small_axes_over),
+            ShowCreation(small_axes_gen),
+            ShowCreation(small_over_curve),
+            ShowCreation(small_gen_curve),
+            FadeIn(small_data_points_top),
+            FadeIn(small_data_points_bottom),
+            Write(over_eq),
+            Write(gen_eq),
+            run_time=2
+        )
+        
+        self.wait(2)
+
+        rect = SurroundingRectangle(over_eq, buff=0.1, color=YELLOW, stroke_width=4).scale(1.08)
+        self.play(ShowCreation(rect), run_time=1)
+        self.wait(2)
+
+        self.play(Transform(rect, SurroundingRectangle(gen_eq, buff=0.1, color=YELLOW, stroke_width=4).scale(1.08)), run_time=1)
+
+        self.wait()
+
+
+        plain_loss = Tex(r"L(\mathbf{w}) = \frac{1}{N} \sum_{i=1}^{N} \left( y_i - \hat{y}_i \right)^2",   font_size=78).set_color(YELLOW)
+
+
+        self.play(FadeOut(axes), FadeOut(linear_curve), FadeOut(data_points), FadeOut(rect), FadeOut(over_eq), 
+                  FadeOut(gen_eq), FadeOut(small_axes_over), FadeOut(small_axes_gen), FadeOut(small_over_curve), 
+                  FadeOut(small_gen_curve), FadeOut(small_data_points_top), FadeOut(small_data_points_bottom), FadeOut(x_label), FadeOut(y_label),
+                  self.camera.frame.animate.restore(), Write(plain_loss), run_time=1)
+        self.wait(2)
+
+
+        temp = Tex(r"L_2(\mathbf{w}) = \ L(\mathbf{w}) + \lambda \sum_{j=1}^{M} w_j^2", font_size=73)
+        temp[6:10].set_color(YELLOW)
+
+        self.play(Transform(plain_loss, temp), run_time=1)
+        self.wait(2)
+
+        brace = Brace(plain_loss[-9:], DOWN, buff=0.33).set_color(YELLOW)
+        self.play(GrowFromCenter(brace), run_time=1)
+        temp1 = Text("penalty term", font_size=46, weight=BOLD).next_to(brace, DOWN, buff=0.34).set_color(PURPLE_C)
+        self.play(Write(temp1), run_time=1)
+
+        self.wait(2)
+        
+        plain_loss[-9].set_color(GREEN),
+        self.play( Indicate(plain_loss[-9], color="#00ff00"), run_time=1)
+        self.wait(2)
+
+        title = Text("L2 Regularization", font_size=83, weight=BOLD).to_edge(UP).set_color(RED).shift(DOWN*0.33)
+        self.play(Write(title), run_time=1)
+        self.wait(2)
+
+        temp = Tex(r"L_1(\mathbf{w}) = \ L(\mathbf{w}) + \lambda \sum_{j=1}^{M} |w_j|", font_size=73)
+        temp[6:10].set_color(YELLOW)
+
+        self.play(
+            Transform(plain_loss, temp), 
+            run_time=1)
+
+        self.play(Transform(brace, Brace(plain_loss[-10:], DOWN, buff=0.33).set_color(YELLOW)), Transform(title, Text("L1 Regularization", font_size=83, weight=BOLD).to_edge(UP).set_color(TEAL).shift(DOWN*0.33)), run_time=1)
+        self.wait(2)
+
+        l1 = Text("L1", font_size=86, weight=BOLD).set_color(TEAL).to_edge(UP).shift(LEFT*3.3)
+        l2 = Text("L2", font_size=86, weight=BOLD).set_color(RED).to_edge(UP).shift(RIGHT*3.3)
+        
+        self.play(FadeOut(brace), FadeOut(temp1), ReplacementTransform(title, VGroup(l1, l2)), FadeIn(l1), FadeIn(l2), FadeOut(plain_loss), run_time=1)
+
+        l1_loss = Tex(r"L_1(\mathbf{w}) = L(\mathbf{w}) + \lambda \sum_{j=1}^{M} |w_j|").scale(0.9).next_to(l1,  DOWN).shift(DOWN*0.43)
+        l2_loss = Tex(r"L_2(\mathbf{w}) = L(\mathbf{w}) + \lambda \sum_{j=1}^{M} w_j^2").scale(0.9).next_to(l2,  DOWN).shift(DOWN*0.43)
+
+        l1_loss[6:10].set_color(YELLOW)
+        l2_loss[6:10].set_color(YELLOW)
+
+        self.play(
+            TransformFromCopy(l1, l1_loss),
+            TransformFromCopy(l2, l2_loss),
+        )
+
+        self.wait(2)
+
+        l1_derivative = Tex(r"\frac{\partial L_1}{\partial w_j} = \frac{\partial L}{\partial w_j} + \lambda \cdot sign(w_j)").scale(0.98).next_to(l1_loss, DOWN).shift(DOWN*0.43)
+        l2_derivative = Tex(r"\frac{\partial L_2}{\partial w_j} = \frac{\partial L}{\partial w_j} + 2 \lambda w_j").scale(0.98).next_to(l2_loss, DOWN).shift(DOWN*0.43)
+
+        l1_derivative[8:14].set_color(YELLOW)
+        l2_derivative[8:14].set_color(YELLOW)
+
+
+        self.play(
+            TransformFromCopy(l1_loss, l1_derivative),
+            TransformFromCopy(l2_loss, l2_derivative),
+        )
+
+        self.wait()
+
+        brace = Brace(l1_derivative[-10:], DOWN, buff=0.33).set_color(PURPLE_D)
+        self.play(GrowFromCenter(brace), run_time=1)
+        self.wait(2)
+
+        self.play(Transform(brace, Brace(l2_derivative[-4:], DOWN, buff=0.33).set_color(YELLOW)), run_time=1)
+        self.wait(2)
+
+        l1_update = Tex(r"w_j \leftarrow w_j - \eta \left( \frac{\partial L}{\partial w_j} + \lambda \cdot sign(w_j) \right)").scale(0.9).next_to(l1_derivative, DOWN).shift(DOWN*0.63)
+        l2_update = Tex(r"w_j \leftarrow w_j - \eta \left( \frac{\partial L}{\partial w_j} + 2 \lambda w_j \right)").scale(0.9).next_to(l2_derivative, DOWN).shift(DOWN*0.63)
+
+        l1_update[8:14].set_color(YELLOW)
+        l2_update[8:14].set_color(YELLOW)
+
+
+        self.play(
+            TransformFromCopy(l1_derivative, l1_update),
+            TransformFromCopy(l2_derivative, l2_update), FadeOut(brace), FadeOut(temp1)
+        )
+
+        self.wait(2)
+
+
+        camera_shift = 15*RIGHT
+        
+        # Create axes at same position as camera
+        axes_reg = Axes(
+            x_range=[-5,5,1], y_range=[-3.6,3.6,1],
+            axis_config={
+                "include_tip": True,
+                "include_numbers": False,
+                "tick_size":0,
+                "stroke_width":6
+            }
+        ).shift(15*RIGHT)  # position matches camera shift
+
+        y_label = Tex("w_2", font_size=68).next_to(axes_reg.y_axis.get_top(), UP)
+        x_label = Tex("w_1", font_size=68).next_to(axes_reg.x_axis.get_right(), RIGHT)
+        
+        self.play(ShowCreation(axes_reg), self.camera.frame.animate.shift(camera_shift+UP*0.4).scale(1.14))
+        self.play(Write(x_label), Write(y_label), run_time=1)
+
+        self.wait(0.5)
+
+        l1_equation = Tex(r"L_2 \rightarrow w_1^2 + w_2^2 = c", font_size=65).next_to(axes_reg, UP, buff=0.5).shift(LEFT*4.57+DOWN*0.33).set_color(RED)
+        l2_equation = Tex(r"L_1 \rightarrow |w_1|  + |w_2| = c", font_size=65).next_to(axes_reg, UP, buff=0.5).shift(RIGHT*4.57+DOWN*0.33).set_color(TEAL)
+
+        self.play(Write(l1_equation), Write(l2_equation), run_time=1)
+        self.wait(2)
+
+        self.play(FadeOut(l1_equation), FadeOut(l2_equation), run_time=1)
+
+
+
+        # --- Multiple Elliptical Contours representing loss levels ---
+        ellipse_center = axes_reg.c2p(2, 1)
+        ellipse_group = VGroup()
+        
+        # Different scale levels (smaller to larger)
+        scales = [0.6, 0.86, 1.2, 1.5]
+        
+        for s in scales:
+            e = Ellipse(
+                width=4.5 * s, height=2.5 * s,
+                color=YELLOW, stroke_width=4
+            ).move_to(ellipse_center).rotate(-PI/13).set_color(YELLOW)
+            ellipse_group.add(e)
+        
+        # Shift all ellipses slightly to desired position
+        ellipse_group.shift(RIGHT*0.4 + UP*1.45)
+        self.wait(2)
+
+        # Animate them in sequence
+        for e in ellipse_group:
+            self.play(ShowCreation(e), run_time=0.8)
+        self.wait(2)
+        
+
+
+        # --- Add L1 diamond centered at origin ---
+        l1_diamond = Polygon(
+            axes_reg.c2p(0, 2),     # top
+            axes_reg.c2p(2, 0),     # right
+            axes_reg.c2p(0, -2),    # bottom
+            axes_reg.c2p(-2, 0),    # left
+            color=TEAL,
+            stroke_width=6
+        ).set_z_index(2).scale(1.05)
+
+        dot = Dot(ellipse_group.get_center(), color="#ff0000", radius=0.255).set_color("#ff0000")
+        text = Text("X", font_size=46, weight=BOLD).move_to(dot).set_z_index(3)
+        dot = VGroup(dot, text)
+        self.play(ShowCreation(dot), run_time=1)
+        self.wait(2)
+
+        PURPLE = PINK
+        # Dot center in scene coordinates
+        dot_center = dot.get_center()
+        
+        # Perpendicular projection onto x-axis (same y as axes origin)
+        x_axis_y = axes_reg.c2p(0, 0)[1]  # y-coordinate of x-axis line
+        x_proj = np.array([dot_center[0], x_axis_y, dot_center[2]])  # same x, y at x-axis
+        
+        # Perpendicular projection onto y-axis (same x as axes origin)
+        y_axis_x = axes_reg.c2p(0, 0)[0]  # x-coordinate of y-axis line
+        y_proj = np.array([y_axis_x, dot_center[1], dot_center[2]])  # same y, x at y-axis
+        
+        # Dashed lines
+        line_x = DashedLine(dot_center, x_proj, color=PURPLE, stroke_width=5, dash_length=0.1).set_z_index(-1)
+        line_y = DashedLine(dot_center, y_proj, color=PURPLE, stroke_width=5, dash_length=0.1).set_z_index(-1)
+        
+        # Labels at intersections
+        w1_label = Tex(r"w_1^*", font_size=66, color=PURPLE).next_to(x_proj, DOWN, buff=0.2).set_color(PURPLE).set_z_index(4)
+        w2_label = Tex(r"w_2^*", font_size=66, color=PURPLE).next_to(y_proj, LEFT, buff=0.2).set_color(PURPLE).set_z_index(4)
+        
+        # Animate
+        self.play(
+            ShowCreation(line_x),
+            ShowCreation(line_y),
+            Write(w1_label),
+            Write(w2_label),
+            run_time=2
+        )
+        self.wait(2)
+
+        self.play(FadeOut(line_x), FadeOut(line_y), FadeOut(w1_label), FadeOut(w2_label),  run_time=1)
+        self.play(ShowCreation(l1_diamond), run_time=1.5)
+        self.wait(2)
+
+
+        dot1 = Dot(ellipse_group.get_center(), color="#8c00cc", radius=0.255).set_color("#29CA6A").set_z_index(3)
+        text = Text("X", font_size=46, weight=BOLD).move_to(dot).set_z_index(3)
+        dot_new = VGroup(dot1, text).move_to(l1_diamond.get_top()).set_z_index(3)       
+        
+        self.play(TransformFromCopy(dot, dot_new))
+
+        self.wait(2)
+
+
+        self.play(FadeOut(l1_diamond), FadeOut(dot_new))
+        self.wait(2)
+
+        # Center of circle in (w1, w2) coordinates
+        circle_center = axes_reg.c2p(0, 0)  # adjust position if needed
+        
+        # Create the L2 contour circle (w1^2 + w2^2 = c)
+        circle = Circle(
+            radius=2.1,           # controls size of contour
+            color=YELLOW,
+            stroke_width=6
+        ).move_to(circle_center).set_color(RED)
+        
+        # Optional rotation or shift if you want angled look
+        # circle.rotate(-PI/10)
+        
+        self.play(ShowCreation(circle), run_time=1.5)
+        self.wait(2)       
+        
+        dot1 = Dot(ellipse_group.get_center(), color="#8c00cc", radius=0.255).set_color("#3700fe")
+        text = Text("X", font_size=46, weight=BOLD).move_to(dot).set_z_index(3)
+        dot_new = VGroup(dot1, text).move_to(l1_diamond.get_top()).shift(DOWN*0.35+RIGHT*1.2).set_z_index(3)     
+        
+        self.play(TransformFromCopy(dot, dot_new))
+
+        self.wait()
+
+        PURPLE = GREEN
+        # Dot center in scene coordinates
+        dot_center = dot_new.get_center()
+        
+        # Perpendicular projection onto x-axis (same y as axes origin)
+        x_axis_y = axes_reg.c2p(0, 0)[1]  # y-coordinate of x-axis line
+        x_proj = np.array([dot_center[0], x_axis_y, dot_center[2]])  # same x, y at x-axis
+        
+        # Perpendicular projection onto y-axis (same x as axes origin)
+        y_axis_x = axes_reg.c2p(0, 0)[0]  # x-coordinate of y-axis line
+        y_proj = np.array([y_axis_x, dot_center[1], dot_center[2]])  # same y, x at y-axis
+        
+        # Dashed lines
+        line_x = DashedLine(dot_center, x_proj, color=PURPLE, stroke_width=5, dash_length=0.1).set_z_index(-1)
+        line_y = DashedLine(dot_center, y_proj, color=PURPLE, stroke_width=5, dash_length=0.1).set_z_index(-1)
+        
+        # Labels at intersections
+        w1_label = Tex(r"w_1^*", font_size=56, ).next_to(x_proj, DOWN, buff=0.2).set_color(PURPLE).set_z_index(4)
+        w2_label = Tex(r"w_2^*", font_size=56, ).next_to(y_proj, LEFT, buff=0.2).set_color(PURPLE).set_z_index(4)
+        
+        # Animate
+        self.play(
+            ShowCreation(line_x),
+            ShowCreation(line_y),
+            Write(w1_label),
+            Write(w2_label),
+            run_time=2
+        )
+        self.wait(2)
+
+        self.play(self.camera.frame.animate.restore())
+
+
+        self.wait(2)
+
+        l2_text = Tex(r"L_2(\mathbf{w}, \mathbf{b}) = L(\mathbf{w}, \mathbf{b}) + \lambda \sum_{j=1}^{M} w_j^2",font_size=72).shift(UP*1.8)
+
+        l1_text = Tex(r"L_1(\mathbf{w}, \mathbf{b}) = L(\mathbf{w}, \mathbf{b}) + \lambda \sum_{j=1}^{M} |w_j|", font_size=72).next_to(l2_text, DOWN, buff=0.99)
+
+        l2_text[:7].set_color(RED)
+        l1_text[:7].set_color(TEAL)
+
+        l2_text[8:14].set_color(YELLOW)
+        l1_text[8:14].set_color(YELLOW)
+
+        self.play(FadeIn(VGroup(l1_text, l2_text)), FadeOut(VGroup(l1, l2, l1_derivative, l2_derivative, l1_update, l2_update, l1_loss, l2_loss )))
+        self.wait(2)
+
+        # --- L1 Regularization with separate sums ---
+        l1_text_sep = Tex(
+            r"L_1(\mathbf{w}, \mathbf{b}) = L(\mathbf{w}, \mathbf{b}) + "
+            r"\lambda \sum_{j=1}^{M} |w_j| + \lambda \sum_{k=1}^{N} |b_k|",
+            font_size=58,
+            color=YELLOW
+        ).move_to(l1_text)
+        
+        # --- L2 Regularization with separate sums ---
+        l2_text_sep = Tex(
+            r"L_2(\mathbf{w}, \mathbf{b}) = L(\mathbf{w}, \mathbf{b}) + "
+            r"\lambda \sum_{j=1}^{M} w_j^2 + \lambda \sum_{k=1}^{N} b_k^2",
+            font_size=58,
+            color=GREEN
+        ).move_to(l2_text)  # same position for smooth transform
+        
+        l2_text_sep[:7].set_color(RED)
+        l1_text_sep[:7].set_color(TEAL)
+
+        l2_text_sep[8:14].set_color(YELLOW)
+        l1_text_sep[8:14].set_color(YELLOW)
+
+
+        self.play(Transform(l1_text, l1_text_sep), Transform(l2_text, l2_text_sep), run_time=1.5)
+
+        rect = SurroundingRectangle(l1_text[-10:]).scale(1.03).set_color("#ff0000")
+        rect1 = SurroundingRectangle(l2_text[-9:]).scale(1.03).set_color("#ff0000")
+
+        self.play(ShowCreation(rect), ShowCreation(rect1))
+
+        self.wait(2)
+
+
+        l2_text1 = Tex(r"L_2(\mathbf{w}, \mathbf{b}) = L(\mathbf{w}, \mathbf{b}) + \lambda \sum_{j=1}^{M} w_j^2",font_size=72).shift(UP*1.8)
+
+        l1_text1 = Tex(r"L_1(\mathbf{w}, \mathbf{b}) = L(\mathbf{w}, \mathbf{b}) + \lambda \sum_{j=1}^{M} |w_j|", font_size=72).next_to(l2_text, DOWN, buff=0.99)
+
+        l2_text1[:7].set_color(RED)
+        l1_text1[:7].set_color(TEAL)
+
+        l2_text1[8:14].set_color(YELLOW)
+        l1_text1[8:14].set_color(YELLOW)   
+
+        self.play(
+            Transform(l1_text, l1_text1),
+            Transform(l2_text, l2_text1),
+            Uncreate(rect),
+            Uncreate(rect1)
+        )  
+
+        self.wait(2)   
+
+
+
+
+
 
 class DataAugmentation(Scene):
     def construct(self):
