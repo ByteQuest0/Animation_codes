@@ -415,3 +415,174 @@ class Standardisation(Scene):
         )
         self.wait(3)
 
+class Normalizatoin(Scene):
+    def construct(self):
+
+        self.camera.frame.scale(0.88)
+
+        # -------------------------------------------------------------
+        # DATASET: more scattered diagonal cloud with large y-values
+        # -------------------------------------------------------------
+        np.random.seed(42)
+
+        # Main cluster centered around y=0, diagonal rectangle — more scattered
+        n_main = 42
+        x_main = np.random.uniform(0.5, 4.5, n_main)           # wider x spread
+        y_main = 150 * x_main + np.random.normal(0, 120, n_main)  # large y values, more scatter, centered
+
+        # Extra points to densify diagonal ends
+        n_extra = 14
+        x_extra = np.random.uniform(0.2, 5.0, n_extra)
+        y_extra = 150 * x_extra + np.random.normal(0, 140, n_extra)
+
+        # Few outliers in other quadrants
+        outliers = np.array([
+            [-1.5, 200],
+            [1.2, -300],
+            [-2.0, -250],
+            [4.5, -200]
+        ])
+
+        # Combine all points
+        data_points = np.vstack([
+            np.column_stack([x_main, y_main]),
+            np.column_stack([x_extra, y_extra]),
+            outliers
+        ])
+
+        # -------------------------------------------------------------
+        # Compute mean & avoid overlapping points
+        # -------------------------------------------------------------
+        mean_x = np.mean(data_points[:, 0])
+        mean_y = np.mean(data_points[:, 1])
+
+        adjusted_points = []
+        for x, y in data_points:
+            if abs(x - mean_x) < 0.15 and abs(y - mean_y) < 50:
+                x += 0.25
+                y += 30
+            adjusted_points.append([x, y])
+        data_points = np.array(adjusted_points)
+        mean_point = [mean_x, mean_y]
+
+        # -------------------------------------------------------------
+        # AXES with different scales
+        # -------------------------------------------------------------
+        axes = Axes(
+            x_range=[-4, 6, 1],
+            y_range=[-800, 1000, 200],
+            width=8,
+            height=6,
+            axis_config={
+                "stroke_width": 6,
+                "include_tip": True,
+                "include_ticks": True,
+                "tick_size": 0.08,
+                "numbers_to_exclude": [0],
+            }
+        )
+        
+        # Add axis labels
+        axes.add_coordinate_labels(
+            num_decimal_places=0,
+            excluding=[0]
+        )
+
+        # -------------------------------------------------------------
+        # DOTS
+        # -------------------------------------------------------------
+        dots = VGroup()
+        for x, y in data_points:
+            dot = Dot(axes.c2p(x, y), radius=0.06)
+            dot.set_color(GREEN_D)
+            dots.add(dot)
+
+
+        # -------------------------------------------------------------
+        # ANIMATION
+        # -------------------------------------------------------------
+        self.play(
+            ShowCreation(axes.x_axis),
+            ShowCreation(axes.y_axis),
+            run_time=1.5
+        )
+
+        self.play(
+            LaggedStart(*[GrowFromCenter(dot) for dot in dots], lag_ratio=0.05),
+            run_time=3
+        )
+        self.wait(1)
+
+        # -------------------------------------------------------------
+        # MIN-MAX NORMALIZATION
+        # -------------------------------------------------------------
+        
+        # Calculate min and max for normalization
+        min_x = np.min(data_points[:, 0])
+        max_x = np.max(data_points[:, 0])
+        min_y = np.min(data_points[:, 1])
+        max_y = np.max(data_points[:, 1])
+        
+        # Normalize data points
+        normalized_points = np.zeros_like(data_points)
+        normalized_points[:, 0] = (data_points[:, 0] - min_x) / (max_x - min_x)
+        normalized_points[:, 1] = (data_points[:, 1] - min_y) / (max_y - min_y)
+        
+        # Normalize mean point
+        normalized_mean = [
+            (mean_point[0] - min_x) / (max_x - min_x),
+            (mean_point[1] - min_y) / (max_y - min_y)
+        ]
+        
+        # Create new normalized axes with better clarity
+        normalized_axes = Axes(
+            x_range=[-0.1, 1.3, 1.1],
+            y_range=[-0.1, 1.3, 1.1],
+            width=8,
+            height=6,
+            axis_config={
+                "stroke_width": 6,
+                "include_tip": True,
+                "include_ticks": True,
+                "tick_size": 0.08,
+            }
+        ).set_z_index(-1)
+        
+        normalized_axes.add_coordinate_labels(
+            num_decimal_places=1,
+            excluding=[-0.1]
+        )
+        
+
+        
+        # Animate transformation simultaneously
+        # Transform axes and dots together
+        dot_animations = []
+        for i, dot in enumerate(dots):
+            new_pos = normalized_axes.c2p(*normalized_points[i])
+            dot_animations.append(dot.animate.move_to(new_pos))
+        
+        # Transform mean dot
+        new_mean_pos = normalized_axes.c2p(*normalized_mean)
+        
+        self.play(
+            Transform(axes, normalized_axes),
+            *dot_animations,
+            self.camera.frame.animate.scale(1.05),
+            run_time=2.5
+        )
+        
+        self.wait(2)
+
+        eq_scalar = Tex(r"x_i \ \rightarrow\ \ \frac{x_i - x_{\min}}{x_{\max} - x_{\min}}").next_to(axes, RIGHT).shift(RIGHT*0.8)
+        
+        eq_scalar_general = Tex(r"x \ \;\rightarrow\; \ a + \frac{(x - x_{\min})(b - a)}{x_{\max} - x_{\min}}")
+
+        self.play(self.camera.frame.animate.shift(RIGHT*4), FadeIn(eq_scalar))
+        self.wait(2)
+
+
+        self.play(Transform(eq_scalar, eq_scalar_general.move_to(eq_scalar).shift(LEFT*0.55)))
+        self.wait(2)
+        self.play(self.camera.frame.animate.shift(LEFT*4), FadeOut(eq_scalar))
+        self.wait(2)
