@@ -1,6 +1,254 @@
 from manimlib import *
 import numpy as np
 
+class OptimizationComparison(Scene):
+    def construct(self):
+        
+        # -------------------------------------------------------------
+        # CREATE TWO AXES SIDE BY SIDE (first quadrant only)
+        # -------------------------------------------------------------
+        
+        # Left axes - elliptical (unnormalized)
+        left_axes = Axes(
+            x_range=[0, 5, 1],
+            y_range=[0, 5, 1],
+            width=5,
+            height=5,
+            axis_config={
+                "stroke_width": 4,
+                "include_tip": True,
+                "include_ticks": False,
+            }
+        ).shift(LEFT * 3.5)
+        
+        # Right axes - circular (normalized)
+        right_axes = Axes(
+            x_range=[0, 5, 1],
+            y_range=[0, 5, 1],
+            width=5,
+            height=5,
+            axis_config={
+                "stroke_width": 4,
+                "include_tip": True,
+                "include_ticks": False,
+            }
+        ).shift(RIGHT * 3.5)
+        
+        # Labels for axes - w on y-axis (left), b on x-axis (right)
+        left_w = Tex("w").next_to(left_axes.y_axis, LEFT).scale(1.2)
+        left_b = Tex("b").next_to(left_axes.x_axis, RIGHT).scale(1.2)
+        right_w = Tex("w").next_to(right_axes.y_axis, LEFT).scale(1.2)
+        right_b = Tex("b").next_to(right_axes.x_axis, RIGHT).scale(1.2)
+        
+        # Center point for contours (shifted right in first quadrant)
+        center_point = np.array([2.5, 2.5])
+        
+        # Define shifts for contours and centers
+        left_contour_shift = RIGHT * 0.34
+        right_contour_shift = RIGHT * 0.34
+        left_center_shift = RIGHT * 0.33
+        right_center_shift = RIGHT * 0.35
+        
+        # -------------------------------------------------------------
+        # CREATE ELLIPTICAL CONTOURS (rotated towards origin)
+        # -------------------------------------------------------------
+        left_contours = VGroup()
+        # Rotation angle to point one end towards origin
+        angle = np.arctan2(center_point[1], center_point[0]) + PI
+        
+        for radius in [0.3, 0.6, 0.9, 1.2, 1.5]:
+            # Stretched ellipse (wide in one direction, narrow perpendicular)
+            ellipse = Ellipse(
+                width=radius * 3.5,  # Very wide
+                height=radius * 1.0,  # Narrow
+                stroke_width=2,
+                stroke_color=BLUE,
+                stroke_opacity=0.6
+            ).rotate(angle).move_to(left_axes.c2p(*center_point))
+            left_contours.add(ellipse)
+
+        left_contours.shift(left_contour_shift)
+        
+        # -------------------------------------------------------------
+        # CREATE CIRCULAR CONTOURS
+        # -------------------------------------------------------------
+        right_contours = VGroup()
+        for radius in [0.8, 1.1, 1.4, 1.7, 2]:
+            circle = Circle(
+                radius=radius * 0.8,
+                stroke_width=2,
+                stroke_color=BLUE,
+                stroke_opacity=0.6
+            ).move_to(right_axes.c2p(*center_point))
+            right_contours.add(circle)
+        
+        right_contours.shift(right_contour_shift)
+        
+        # -------------------------------------------------------------
+        # CENTER DOTS (RED - #FF0000)
+        # -------------------------------------------------------------
+        left_center = Dot(left_axes.c2p(*center_point), radius=0.1, color="#FF0000")
+        left_center.set_z_index(5).set_color("#FF0000")
+        left_center.shift(left_center_shift)
+        
+        right_center = Dot(right_axes.c2p(*center_point), radius=0.1, color="#FF0000")
+        right_center.set_z_index(5).set_color("#FF0000")
+        right_center.shift(right_center_shift)
+        
+        # -------------------------------------------------------------
+        # SHOW INITIAL SETUP
+        # -------------------------------------------------------------
+        self.play(
+            ShowCreation(left_axes),
+            ShowCreation(right_axes),
+            ShowCreation(left_w),
+            ShowCreation(left_b),
+            ShowCreation(right_w),
+            ShowCreation(right_b),
+            run_time=1.5
+        )
+        self.wait(0.5)
+        
+        self.play(
+            LaggedStart(*[ShowCreation(c) for c in left_contours], lag_ratio=0.15),
+            LaggedStart(*[ShowCreation(c) for c in right_contours], lag_ratio=0.15),
+            run_time=2
+        )
+        self.wait(0.5)
+        
+        self.play(
+            GrowFromCenter(left_center),
+            GrowFromCenter(right_center),
+            run_time=1
+        )
+        self.wait(1)
+
+        
+        # -------------------------------------------------------------
+        # OPTIMIZATION PATHS - starting from outermost contour
+        # -------------------------------------------------------------
+        
+        # Calculate starting point on outermost contour (rotated ellipse)
+        # For left: point on ellipse at angle pointing away from center
+        start_angle = angle  # Along major axis away from origin
+        ellipse_a = 1.5 * 3.5 / 2  # semi-major axis in coordinate space
+        ellipse_b = 1.5 * 1.0 / 2  # semi-minor axis
+        
+        # Start point on rotated ellipse
+        start_offset_x = ellipse_a * np.cos(start_angle)
+        start_offset_y = ellipse_a * np.sin(start_angle)
+        start_left = center_point + np.array([start_offset_x, start_offset_y])
+        
+        # For right: point on outermost circle (radius 2.0, the last one in the list)
+        circle_radius = 2.0 * 0.8
+        start_right = center_point + circle_radius * np.array([np.cos(start_angle), np.sin(start_angle)])
+        
+        # Left path: zigzag along the rotated ellipse direction
+        left_path_points = [
+            start_left,
+            center_point + 0.85 * (start_left - center_point) + np.array([0.15, -0.15]),
+            center_point + 0.70 * (start_left - center_point) + np.array([-0.12, 0.12]),
+            center_point + 0.58 * (start_left - center_point) + np.array([0.10, -0.10]),
+            center_point + 0.45 * (start_left - center_point) + np.array([-0.08, 0.08]),
+            center_point + 0.34 * (start_left - center_point) + np.array([0.06, -0.06]),
+            center_point + 0.25 * (start_left - center_point) + np.array([-0.04, 0.04]),
+            center_point + 0.18 * (start_left - center_point) + np.array([0.03, -0.03]),
+            center_point + 0.12 * (start_left - center_point) + np.array([-0.02, 0.02]),
+            center_point + 0.07 * (start_left - center_point),
+            center_point + 0.03 * (start_left - center_point),
+            center_point
+        ]
+        
+        # Right path: direct to center
+        right_path_points = [
+            start_right,
+            center_point + 0.75 * (start_right - center_point),
+            center_point + 0.50 * (start_right - center_point),
+            center_point + 0.25 * (start_right - center_point),
+            center_point
+        ]
+        
+        # Create starting dots (smaller) - with shifts applied to match contours
+        left_start_dot = Dot(left_axes.c2p(*start_left), radius=0.06, color=YELLOW).set_color(YELLOW)
+        left_start_dot.shift(left_contour_shift)
+        
+        self.play(
+            GrowFromCenter(left_start_dot),
+            run_time=0.8
+        )
+        self.wait(0.5)
+        
+        # -------------------------------------------------------------
+        # ANIMATE LEFT PATH (ELLIPSE) FIRST
+        # -------------------------------------------------------------
+        
+        # Create path lines
+        left_path_lines = VGroup()
+        left_dots = VGroup(left_start_dot).set_color(YELLOW)
+        
+        # Animate left path
+        for i in range(len(left_path_points) - 1):
+            p1 = left_path_points[i]
+            p2 = left_path_points[i + 1]
+            
+            line = Line(
+                left_axes.c2p(*p1),
+                left_axes.c2p(*p2),
+                stroke_width=2,
+                color=YELLOW
+            )
+            line.shift(left_contour_shift)
+            left_path_lines.add(line)
+            
+            new_dot = Dot(left_axes.c2p(*p2), radius=0.06, color=YELLOW).set_color(YELLOW)
+            new_dot.shift(left_contour_shift)
+            left_dots.add(new_dot)
+            
+            self.play(ShowCreation(line), GrowFromCenter(new_dot), run_time=0.4)
+            self.wait(0.1)
+        
+        self.wait(2)
+        
+        # -------------------------------------------------------------
+        # ANIMATE RIGHT PATH (CIRCLE) AFTER WAIT
+        # -------------------------------------------------------------
+        
+        right_start_dot = Dot(right_axes.c2p(*start_right), radius=0.06, color=YELLOW).set_color(YELLOW)
+        right_start_dot.shift(right_contour_shift)
+        
+        self.play(
+            GrowFromCenter(right_start_dot),
+            run_time=0.8
+        )
+        self.wait(0.5)
+        
+        # Create path lines
+        right_path_lines = VGroup()
+        right_dots = VGroup(right_start_dot).set_color(YELLOW)
+        
+        # Animate right path
+        for i in range(len(right_path_points) - 1):
+            r1 = right_path_points[i]
+            r2 = right_path_points[i + 1]
+            
+            right_line = Line(
+                right_axes.c2p(*r1),
+                right_axes.c2p(*r2),
+                stroke_width=2,
+                color=YELLOW
+            )
+            right_line.shift(right_contour_shift)
+            right_path_lines.add(right_line)
+            
+            right_new_dot = Dot(right_axes.c2p(*r2), radius=0.06, color=YELLOW).set_color(YELLOW)
+            right_new_dot.shift(right_contour_shift)
+            right_dots.add(right_new_dot)
+            
+            self.play(ShowCreation(right_line), GrowFromCenter(right_new_dot), run_time=0.4)
+            self.wait(0.1)
+        
+        self.wait(3)
+
 
 class Standardisation(Scene):
     def construct(self):
