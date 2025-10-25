@@ -639,4 +639,19 @@ class VanishingANDexplodingGradient(Scene):
 
         
 
+        self.play(self.camera.frame.animate.shift(LEFT*20.2))
+        self.wait(2)
+
+
+        # --- General proportional form for any layer l ---
+        general_eq = Tex(
+            r"\frac{\partial L}{\partial w_{ij}^{(l)}} \propto \prod_{m=l}^{L} f'\big(z^{(m)}\big) \, W^{(m+1)}"
+        ).scale(1.5)
+        
+        # Move to the same position as the old equation
+        general_eq.move_to(eq_w4_11)
+        
+        # Transform previous simplified layer-specific equation to this general form
+        self.play(Transform(eq_w4_11, general_eq), Uncreate(top_weight_last))
+        self.wait(3)
         
