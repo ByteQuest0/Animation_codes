@@ -474,6 +474,12 @@ class RandomInitialization(Scene):
             self.wait(0.18)
         self.wait(2)
 
+
+        self.embed()
+
+
+
+
         # Create VANISHING gradient histograms for saturated tanh
         vanishing_gradient_histograms = VGroup()
         
@@ -530,7 +536,57 @@ class RandomInitialization(Scene):
 
 
 
-        self.play(FadeOut(saturated_histograms), )
+
+        # Create SATURATED sigmoid histograms (peaked at 0 and 1)
+        saturated_sigmoid_histograms = VGroup()
+        
+        for layer_idx in range(1, len(layers)-1):
+            existing_axis = saturated_histograms[layer_idx][0]
+            
+            bars = VGroup()
+            saturation = saturation_strengths[layer_idx - 1]
+            
+            for i in range(num_bins):
+                x = 0 + (i + 0.5) * (1 / num_bins)  # Range from 0 to 1
+                
+                # Bimodal: peaks at 0 and 1
+                left_peak = np.exp(-((x - 0)**2) / (2 * 0.02**2))
+                right_peak = np.exp(-((x - 1)**2) / (2 * 0.02**2))
+                
+                height = (left_peak + right_peak) * saturation * hist_height * 0.4
+                
+                bar = Rectangle(
+                    width=hist_width / num_bins * 0.9,
+                    height=height,
+                    fill_opacity=0.88,
+                    fill_color=YELLOW,
+                    stroke_width=1,
+                    stroke_color=YELLOW
+                )
+                
+                bar.move_to(existing_axis.get_center())
+                bar.shift(RIGHT * ((x - 0.5) * hist_width))
+                bar.shift(UP * height/2)
+                
+                bars.add(bar)
+            
+            saturated_sigmoid_histograms.add(bars)
+        
+        # Animate: Transform to sigmoid
+        animations = []
+        for i in range(len(saturated_sigmoid_histograms)):
+            animations.append(FadeOut(saturated_histograms[i+1][1]))
+            animations.append(FadeIn(saturated_sigmoid_histograms[i]))
+            animations.append(Transform(saturated_histograms[i+1][2], Text("0", font_size=28).move_to(saturated_histograms[i+1][2])))
+            animations.append(Transform(saturated_histograms[i+1][3], Text("0.5", font_size=28).move_to(saturated_histograms[i+1][3])))
+            animations.append(Transform(saturated_histograms[i+1][5], Tex(r"\sigma(z)", font_size=46).move_to(saturated_histograms[i+1][5])))
+        
+        self.play(*animations, run_time=1.5)
+        self.wait(2)
+
+
+
+        self.play(FadeOut(saturated_histograms), FadeOut(saturated_sigmoid_histograms))
         self.wait(2)
 
         uniform = Tex(r"w_{ji} \sim \mathcal{U}(-a,\,a)").move_to(a).scale(1.86)
@@ -565,6 +621,8 @@ class RandomInitialization(Scene):
         self.wait()
         self.play(Transform(rect, SurroundingRectangle(layers[3], fill_color="#ff0000", color="#ff0000", fill_opacity=0.13).scale(1.1) ))
         self.wait(2)
+
+        
 
 
 
