@@ -289,74 +289,6 @@ class RandomInitialization(Scene):
 
         self.play(FadeOut(rect))
 
-        # Create tanh gradient histograms
-        gradient_histograms = VGroup()
-        
-        # For tanh, derivative is 1 - tanh²(x)
-        # When tanh(x) is near 0, derivative is near 1
-        # When tanh(x) is near ±1, derivative is near 0
-        
-        variances = [0.12, 0.08, 0.06]  # Same as original tanh
-        
-        for layer_idx in range(1, len(layers)-1):
-            layer = layers[layer_idx]
-            
-            # Get the existing axis from tanh histograms
-            existing_axis = histograms[layer_idx][0]
-            
-            # Create gradient bars
-            bars = VGroup()
-            var = variances[layer_idx - 1]
-            
-            for i in range(num_bins):
-                x = -1 + (i + 0.5) * (2 / num_bins)  # Range from -1 to 1
-                
-                # This represents tanh output distribution
-                tanh_val = x
-                
-                # Gradient of tanh: 1 - tanh²(x)
-                gradient_val = 1 - tanh_val**2
-                
-                # Height based on how many neurons have this gradient value
-                # Since tanh outputs follow the Gaussian, we weight by that distribution
-                height = np.exp(-(x**2) / (2 * var**2)) / (var * np.sqrt(2 * np.pi))
-                height = height * hist_height * 0.5 * var
-                
-                # Scale height by gradient value to show gradient magnitude
-                height = height * gradient_val
-                
-                bar = Rectangle(
-                    width=hist_width / num_bins * 0.9,
-                    height=height,
-                    fill_opacity=0.88,
-                    fill_color=ORANGE,
-                    stroke_width=1,
-                    stroke_color=ORANGE
-                )
-                
-                bar.move_to(existing_axis.get_center())
-                bar.shift(RIGHT * (x * hist_width/2))
-                bar.shift(UP * height/2)
-                
-                bars.add(bar)
-            
-            gradient_histograms.add(bars)
-        
-        # Animate: Transform tanh activation histograms to gradient histograms
-        animations = []
-        
-        for i in range(len(gradient_histograms)):
-            # Transform yellow bars to orange gradient bars
-            animations.append(Transform(histograms[i+1][1], gradient_histograms[i]))
-            
-            # Update the label from tanh(z) to tanh'(z)
-            animations.append(Transform(
-                histograms[i+1][5], 
-                Tex(r"\tanh'(z)", font_size=46).move_to(histograms[i+1][5])
-            ))
-        
-        self.play(*animations, run_time=1.5)
-        self.wait(2)
 
         # Create sigmoid histograms (only bars, reusing existing axes and labels)
         sigmoid_histograms = VGroup()
@@ -417,71 +349,6 @@ class RandomInitialization(Scene):
         self.play(*animations, run_time=1.5)
         self.wait(2)
 
-        # Create sigmoid gradient histograms
-        sigmoid_gradient_histograms = VGroup()
-        
-        concentration_factors = [0.04, 0.05, 0.03]
-        
-        for layer_idx in range(1, len(layers)-1):
-            layer = layers[layer_idx]
-            
-            # Get the existing axis
-            existing_axis = histograms[layer_idx][0]
-            
-            # Create gradient bars
-            bars = VGroup()
-            concentration = concentration_factors[layer_idx - 1]
-            
-            for i in range(num_bins):
-                x = 0 + (i + 0.5) * (1 / num_bins)  # Range from 0 to 1
-                
-                # Sigmoid output distribution (Gaussian centered at 0.5)
-                sigmoid_distribution = np.exp(-((x - 0.5)**2) / (2 * concentration**2)) / (concentration * np.sqrt(2 * np.pi))
-                
-                # Sigmoid derivative: σ(x)(1 - σ(x))
-                # Maximum at x=0.5 where derivative = 0.25
-                # Approaches 0 at x=0 and x=1
-                gradient_val = x * (1 - x)
-                
-                # Height based on distribution AND gradient value
-                height = sigmoid_distribution * hist_height * 0.3 * concentration
-                
-                # Scale by gradient value (max 0.25 at center)
-                # Multiply by 4 to normalize since max gradient is 0.25
-                height = height * gradient_val * 4
-                
-                bar = Rectangle(
-                    width=hist_width / num_bins * 0.9,
-                    height=height,
-                    fill_opacity=0.88,
-                    fill_color=ORANGE,
-                    stroke_width=1,
-                    stroke_color=ORANGE
-                )
-                
-                bar.move_to(existing_axis.get_center())
-                bar.shift(RIGHT * ((x - 0.5) * hist_width))
-                bar.shift(UP * height/2)
-                
-                bars.add(bar)
-            
-            sigmoid_gradient_histograms.add(bars)
-        
-        # Transform sigmoid to sigmoid gradient
-        animations = []
-        
-        for i in range(len(sigmoid_gradient_histograms)):
-            # Transform yellow sigmoid bars to orange gradient bars
-            animations.append(Transform(sigmoid_histograms[i], sigmoid_gradient_histograms[i]))
-            
-            # Update label from σ(z) to σ'(z)
-            animations.append(Transform(
-                histograms[i+1][5], 
-                Tex(r"\sigma'(z)", font_size=46).move_to(histograms[i+1][5])
-            ))
-        
-        self.play(*animations, run_time=1.5)
-        self.wait(2)
 
         
         for i in range(1,3):
@@ -661,113 +528,24 @@ class RandomInitialization(Scene):
         self.play(*animations, run_time=1.5)
         self.wait(2)
 
-        # Create SATURATED sigmoid histograms (peaked at 0 and 1)
-        saturated_sigmoid_histograms = VGroup()
-        
-        for layer_idx in range(1, len(layers)-1):
-            existing_axis = saturated_histograms[layer_idx][0]
-            
-            bars = VGroup()
-            saturation = saturation_strengths[layer_idx - 1]
-            
-            for i in range(num_bins):
-                x = 0 + (i + 0.5) * (1 / num_bins)  # Range from 0 to 1
-                
-                # Bimodal: peaks at 0 and 1
-                left_peak = np.exp(-((x - 0)**2) / (2 * 0.02**2))
-                right_peak = np.exp(-((x - 1)**2) / (2 * 0.02**2))
-                
-                height = (left_peak + right_peak) * saturation * hist_height * 0.4
-                
-                bar = Rectangle(
-                    width=hist_width / num_bins * 0.9,
-                    height=height,
-                    fill_opacity=0.88,
-                    fill_color=YELLOW,
-                    stroke_width=1,
-                    stroke_color=YELLOW
-                )
-                
-                bar.move_to(existing_axis.get_center())
-                bar.shift(RIGHT * ((x - 0.5) * hist_width))
-                bar.shift(UP * height/2)
-                
-                bars.add(bar)
-            
-            saturated_sigmoid_histograms.add(bars)
-        
-        # Animate: Transform to sigmoid
-        animations = []
-        for i in range(len(saturated_sigmoid_histograms)):
-            animations.append(FadeOut(saturated_histograms[i+1][1]))
-            animations.append(FadeIn(saturated_sigmoid_histograms[i]))
-            animations.append(Transform(saturated_histograms[i+1][2], Text("0", font_size=28).move_to(saturated_histograms[i+1][2])))
-            animations.append(Transform(saturated_histograms[i+1][3], Text("0.5", font_size=28).move_to(saturated_histograms[i+1][3])))
-            animations.append(Transform(saturated_histograms[i+1][5], Tex(r"\sigma(z)", font_size=46).move_to(saturated_histograms[i+1][5])))
-        
-        self.play(*animations, run_time=1.5)
-        self.wait(2)
 
-        # Create sigmoid gradient histograms (also vanishing)
-        sigmoid_gradient_histograms = VGroup()
-        
-        for layer_idx in range(1, len(layers)-1):
-            existing_axis = saturated_histograms[layer_idx][0]
-            
-            bars = VGroup()
-            saturation = saturation_strengths[layer_idx - 1]
-            
-            for i in range(num_bins):
-                x = 0 + (i + 0.5) * (1 / num_bins)
-                
-                # Bimodal distribution at 0 and 1
-                left_peak = np.exp(-((x - 0)**2) / (2 * 0.02**2))
-                right_peak = np.exp(-((x - 1)**2) / (2 * 0.02**2))
-                
-                # Sigmoid derivative: σ(x)(1 - σ(x))
-                # At x=0 or x=1, derivative is ~0
-                # At x=0.5, derivative is maximum (0.25)
-                gradient_val = x * (1 - x)
-                
-                height = 2.7 * (left_peak + right_peak) * saturation * hist_height * 0.4 * (gradient_val * 0.3)
-                
-                bar = Rectangle(
-                    width=hist_width / num_bins * 0.9,
-                    height=height,
-                    fill_opacity=0.88,
-                    fill_color=ORANGE,
-                    stroke_width=1,
-                    stroke_color=ORANGE
-                )
-                
-                bar.move_to(existing_axis.get_center())
-                bar.shift(RIGHT * ((x - 0.5) * hist_width))
-                bar.shift(UP * height/2)
-                
-                bars.add(bar)
-            
-            sigmoid_gradient_histograms.add(bars)
-        
-        # Transform to sigmoid gradient
-        animations = []
-        for i in range(len(sigmoid_gradient_histograms)):
-            animations.append(FadeOut(saturated_sigmoid_histograms[i]))
-            animations.append(FadeIn(sigmoid_gradient_histograms[i]))
-            animations.append(Transform(
-                saturated_histograms[i+1][5], 
-                Tex(r"\sigma'(z)", font_size=46).move_to(saturated_histograms[i+1][5])
-            ))
-        
-        self.play(*animations, run_time=1.5)
-        self.wait(2)
 
-        self.play(FadeOut(saturated_histograms), FadeOut(sigmoid_gradient_histograms))
+        self.play(FadeOut(saturated_histograms), )
         self.wait(2)
 
         uniform = Tex(r"w_{ji} \sim \mathcal{U}(-a,\,a)").move_to(a).scale(1.86)
  
         self.play(ShowCreation(uniform))
         self.wait(2)
+
+        self.play(uniform.animate.shift(LEFT*3.5))
+
+        a = Tex(r"Var(w) = \frac{a^2}{3}").scale(1.86).next_to(uniform, RIGHT, buff=0.85)
+        self.play(Write(a))
+        self.wait(2)
+
+        self.play(FadeOut(a),uniform.animate.shift(RIGHT*3.5) )
+
 
         self.play(Transform(uniform, Tex(r"w_{ji} \sim \mathcal{U}\left(-\sqrt{\frac{1}{n}},\,\sqrt{\frac{1}{n}}\right)").scale(1.45).move_to(uniform)))
 
@@ -788,7 +566,8 @@ class RandomInitialization(Scene):
         self.play(Transform(rect, SurroundingRectangle(layers[3], fill_color="#ff0000", color="#ff0000", fill_opacity=0.13).scale(1.1) ))
         self.wait(2)
 
-        
+
+
 
 
 class ZeroWeightInitialization(Scene):
