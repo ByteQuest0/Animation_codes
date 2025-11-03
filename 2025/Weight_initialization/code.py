@@ -3,6 +3,794 @@ import numpy as np
 
 PURE_RED = "#FF0000"
 
+class RandomInitialization(Scene):
+    def construct(self):
+
+        self.camera.frame.scale(1.17).shift(RIGHT*6 + DOWN*1.26)
+
+        HIDDEN_COLOR = BLUE
+        WEIGHT_COLOR = PURE_RED
+
+        layer_sizes = [5, 6, 4, 3, 1]
+        layer_spacing = 2.5
+        neuron_spacing = 1.0
+
+        layers = []
+
+        # ===== CREATE NEURONS =====
+        for i, size in enumerate(layer_sizes):
+            layer = VGroup()
+            for j in range(size):
+                neuron = Circle(radius=0.22, color=WHITE, fill_opacity=0.15)
+                if i == 0:
+                    neuron.set_fill(GREEN, opacity=1).set_stroke(GREEN_B).scale(1.2)
+                elif i == len(layer_sizes) - 1:
+                    neuron.set_fill(HIDDEN_COLOR, opacity=1).set_stroke(BLUE_B).scale(2)
+                else:
+                    neuron.set_fill(HIDDEN_COLOR, opacity=1).set_stroke(BLUE_B).scale(1.7)
+                neuron.move_to(RIGHT * 1.24 * i * layer_spacing + UP * (j - (size - 1) / 2) * neuron_spacing).set_z_index(1)
+                layer.add(neuron)
+            layers.append(layer)
+
+        network = VGroup(*layers)
+
+        # ===== CONNECTION CREATOR =====
+        def create_connections(layers_mobj):
+            conns = VGroup()
+            for l1, l2 in zip(layers_mobj[:-1], layers_mobj[1:]):
+                for n1 in l1:
+                    for n2 in l2:
+                        line = Line(
+                            n1.get_center(), n2.get_center(),
+                            color=WEIGHT_COLOR, stroke_width=1.5
+                        ).set_color(GREY_B)
+                        conns.add(line)
+            return conns
+        
+        # ===== NEURON GROW + WEIGHT CREATION =====
+        self.play(
+            LaggedStartMap(GrowFromCenter, network, lag_ratio=0.05, run_time=1.5),
+        )
+        
+        connections = create_connections(layers).set_z_index(-1)
+        self.play(
+            LaggedStartMap(ShowCreation, connections, lag_ratio=0.01, run_time=2),
+        )
+        self.wait(2)
+
+        a = Tex(r"w_{ij} \sim \mathcal{N}(\mu,\,\sigma^2)").next_to(layers[1], DOWN)
+        a.scale(1.77).shift(DOWN*0.95+RIGHT*2.8)
+        
+        self.play(ShowCreation(a))
+        self.wait(2)
+
+        self.play(Transform(a, Tex(r"w_{ij} \sim \mathcal{N}(0,\,1)").move_to(a).scale(1.77), run_time=0.7))
+        self.wait(2)
+
+        self.camera.frame.save_state()
+
+        # ===== AXES =====
+        axes = Axes(
+            x_range=[-4, 4, 1],
+            y_range=[0, 4, 3.5],
+            axis_config={
+                "stroke_width": 4,
+                "include_tip": True,
+                "include_ticks": True,
+            },
+            x_axis_config={
+                "include_numbers": True,
+            },
+            y_axis_config={
+                "include_numbers": False,
+            },
+        ).scale(2.4).next_to(layers[-1], RIGHT).shift(DOWN * 2.5 + RIGHT * 2.5)
+
+        def fake_normal(x):
+            return 7 * (1 / np.sqrt(2 * np.pi)) * np.exp(-x**2 / 2)
+
+        graph = axes.get_graph(fake_normal, x_range=[-4, 4], color=YELLOW, stroke_width=3.2)
+        y_label = Text("0.5").scale(1.2).next_to(axes.c2p(0, 3.5), LEFT, buff=0.43)
+
+        # ===== ANIMATION =====
+        self.play(ShowCreation(axes), ShowCreation(y_label), self.camera.frame.animate.shift(RIGHT*19).scale(1.37).shift(DOWN*1.27))
+        self.play(ShowCreation(graph), run_time=2)
+        self.wait(2)
+
+        self.play(self.camera.frame.animate.restore())
+        self.wait(2)
+
+        self.play(Transform(a, Tex(r"w_{ij} \sim \mathcal{N}(0,\,1) \cdot 0.01").move_to(a).scale(1.77), run_time=0.7))
+        self.wait(2)
+
+        temp = Text("np.random.randn(fan_out * fan_in) * 0.01").move_to(a).scale(1.37)
+        temp[10:15].set_color("#ff8808")
+
+        self.play(Transform(a, temp, run_time=0.7))
+        self.wait(2)
+
+        rect = SurroundingRectangle(layers[0], fill_color="#ff0000", color="#ff0000", fill_opacity=0.13).scale(1.1)
+        self.play(ShowCreation(rect))
+        self.wait(2)
+
+        self.play(Transform(rect, SurroundingRectangle(layers[1], fill_color="#ff0000", color="#ff0000", fill_opacity=0.13).scale(1.05)))
+        self.wait(2)
+
+        temp = Text("np.random.randn(6*5) * 0.01").move_to(a).scale(1.77)
+        temp[10:15].set_color("#ff8808")
+        temp_rect = SurroundingRectangle(temp, fill_color="#ff0000", color="#ff0000", fill_opacity=0.01).scale(1.05)
+        self.play(Transform(a, temp, run_time=0.7))
+        self.play(Transform(rect, temp_rect))
+        self.wait(2)
+
+        z = Tex(r"z_i = \sum_j w_{ij} x_j + b_i").move_to(a).scale(1.7).shift(DOWN*0.23)
+
+        self.play(FadeOut(rect), FadeOut(a), FadeIn(z))
+        self.wait(2)
+
+        rect = SurroundingRectangle(z[-2:], color="#ff0000")
+        self.play(ShowCreation(rect))
+        self.wait(2)
+
+        self.play(FadeOut(rect), Transform(z, Tex(r"z_i = \sum_j w_{ij} x_j").move_to(a).scale(1.7)))
+        rect = SurroundingRectangle(z[4:], color="#ff0000").scale(1.066)
+        self.play(ShowCreation(rect))
+        self.wait(2)   
+
+        self.play(FadeOut(rect), FadeOut(z))    
+
+        # ===== HISTOGRAM SIMULATION =====
+        
+        histograms = VGroup()
+        
+        # Parameters for histogram appearance
+        hist_width = 2
+        hist_height = 0.8 * 2.4 * 3.2
+        num_bins = 20
+        
+        # INPUT LAYER HISTOGRAM (Full Gaussian)
+        input_layer = layers[0]
+        
+        # Create x-axis for input
+        input_axis = Line(
+            LEFT * hist_width/2, 
+            RIGHT * hist_width/2,
+            stroke_width=3,
+            color=WHITE
+        )
+        input_axis.next_to(input_layer, DOWN, buff=1.71)
+        
+        # Create bars for input (full Gaussian distribution)
+        input_bars = VGroup()
+        input_var = 0.5  # Wide Gaussian for input data
+        
+        for i in range(num_bins):
+            x = -2 + (i + 0.5) * (4 / num_bins)  # Range from -2 to 2
+            
+            height = np.exp(-(x**2) / (2 * input_var**2)) / (input_var * np.sqrt(2 * np.pi))
+            height = height * hist_height * 0.5 * input_var
+            
+            bar = Rectangle(
+                width=hist_width / num_bins * 0.9,
+                height=height,
+                fill_opacity=0.88,
+                fill_color=GREEN,
+                stroke_width=1,
+                stroke_color=GREEN
+            )
+            
+            bar.move_to(input_axis.get_center())
+            bar.shift(RIGHT * (x * hist_width/4))
+            bar.shift(UP * height/2)
+            
+            input_bars.add(bar)
+        
+        # Add labels for input histogram
+        input_label = Text("Input data", font_size=46).next_to(input_axis, DOWN, buff=0.7)
+        
+        input_hist = VGroup(input_axis, input_bars, input_label).shift(DOWN*0.4)
+        input_label.shift(UP*0.34)
+        histograms.add(input_hist)
+        
+        # HIDDEN LAYER HISTOGRAMS (tanh(z) with decreasing variance)
+        variances = [0.12, 0.08, 0.06]
+        
+        for layer_idx in range(1, len(layers)-1):  # skip input and output layer
+            layer = layers[layer_idx]
+            
+            # Create x-axis
+            axis_line = Line(
+                LEFT * hist_width/2, 
+                RIGHT * hist_width/2,
+                stroke_width=3,
+                color=WHITE
+            )
+            axis_line.next_to(layer, DOWN, buff=1.71)
+            
+            # Create histogram bars
+            bars = VGroup()
+            var = variances[layer_idx - 1]
+            
+            for i in range(num_bins):
+                x = -1 + (i + 0.5) * (2 / num_bins)
+                
+                height = np.exp(-(x**2) / (2 * var**2)) / (var * np.sqrt(2 * np.pi))
+                height = height * hist_height * 0.5 * var
+                
+                bar = Rectangle(
+                    width=hist_width / num_bins * 0.9,
+                    height=height,
+                    fill_opacity=0.88,
+                    fill_color=YELLOW,
+                    stroke_width=1,
+                    stroke_color=YELLOW
+                )
+                
+                bar.move_to(axis_line.get_center())
+                bar.shift(RIGHT * (x * hist_width/2))
+                bar.shift(UP * height/2)
+                
+                bars.add(bar)
+            
+            # Add x-axis labels: -1, 0, 1
+            label_minus1 = Text("-1", font_size=28).next_to(axis_line.get_start(), DOWN, buff=0.15)
+            label_0 = Text("0", font_size=28).next_to(axis_line.get_center(), DOWN, buff=0.15)
+            label_1 = Text("1", font_size=28).next_to(axis_line.get_end(), DOWN, buff=0.15)
+            
+            # Add tanh label
+            tanh_label = Tex(r"\tanh(z)", font_size=46).next_to(axis_line, DOWN, buff=0.7)
+            
+            hist_group = VGroup(axis_line, bars, label_minus1, label_0, label_1, tanh_label)
+            histograms.add(hist_group)
+        
+        histograms.shift(UP*0.1)
+        # Animate all histograms appearing
+        # First show input histogram
+        self.play(
+            FadeIn(input_hist[0]),  # axis
+            FadeIn(input_hist[2]),  # "Input data" label
+            run_time=0.5
+        )
+        self.play(
+            LaggedStartMap(GrowFromEdge, input_hist[1], edge=DOWN, lag_ratio=0.05),
+            run_time=1
+        )
+        self.wait(1)
+        
+        # Then show hidden layer histograms one by one
+        for hist in histograms[1:]:
+            self.play(
+                FadeIn(hist[0]),  # axis
+                FadeIn(hist[2]),  # -1 label
+                FadeIn(hist[3]),  # 0 label
+                FadeIn(hist[4]),  # 1 label
+                FadeIn(hist[5]),  # tanh label
+                run_time=0.5
+            )
+            self.play(
+                LaggedStartMap(GrowFromEdge, hist[1], edge=DOWN, lag_ratio=0.05),
+                run_time=1
+            )
+            self.wait(1)
+        self.wait(2)
+
+        rect = SurroundingRectangle(histograms[0], fill_color="#ff0000", color="#ff0000", fill_opacity=0.09).scale(1.05)
+        self.play(ShowCreation(rect))
+
+        self.wait(2)
+        
+        self.play(Transform(rect, SurroundingRectangle(histograms[1], fill_color="#ff0000", color="#ff0000", fill_opacity=0.09).scale(1.05).shift(UP*0.1)))
+        self.wait(2)
+
+        self.play(Transform(rect, SurroundingRectangle(histograms[2], fill_color="#ff0000", color="#ff0000", fill_opacity=0.09).scale(1.05)))
+
+        self.play(Transform(rect, SurroundingRectangle(histograms[3], fill_color="#ff0000", color="#ff0000", fill_opacity=0.09).scale(1.05)))
+        self.wait(2)
+
+        self.play(FadeOut(rect))
+
+        # Create tanh gradient histograms
+        gradient_histograms = VGroup()
+        
+        # For tanh, derivative is 1 - tanh²(x)
+        # When tanh(x) is near 0, derivative is near 1
+        # When tanh(x) is near ±1, derivative is near 0
+        
+        variances = [0.12, 0.08, 0.06]  # Same as original tanh
+        
+        for layer_idx in range(1, len(layers)-1):
+            layer = layers[layer_idx]
+            
+            # Get the existing axis from tanh histograms
+            existing_axis = histograms[layer_idx][0]
+            
+            # Create gradient bars
+            bars = VGroup()
+            var = variances[layer_idx - 1]
+            
+            for i in range(num_bins):
+                x = -1 + (i + 0.5) * (2 / num_bins)  # Range from -1 to 1
+                
+                # This represents tanh output distribution
+                tanh_val = x
+                
+                # Gradient of tanh: 1 - tanh²(x)
+                gradient_val = 1 - tanh_val**2
+                
+                # Height based on how many neurons have this gradient value
+                # Since tanh outputs follow the Gaussian, we weight by that distribution
+                height = np.exp(-(x**2) / (2 * var**2)) / (var * np.sqrt(2 * np.pi))
+                height = height * hist_height * 0.5 * var
+                
+                # Scale height by gradient value to show gradient magnitude
+                height = height * gradient_val
+                
+                bar = Rectangle(
+                    width=hist_width / num_bins * 0.9,
+                    height=height,
+                    fill_opacity=0.88,
+                    fill_color=ORANGE,
+                    stroke_width=1,
+                    stroke_color=ORANGE
+                )
+                
+                bar.move_to(existing_axis.get_center())
+                bar.shift(RIGHT * (x * hist_width/2))
+                bar.shift(UP * height/2)
+                
+                bars.add(bar)
+            
+            gradient_histograms.add(bars)
+        
+        # Animate: Transform tanh activation histograms to gradient histograms
+        animations = []
+        
+        for i in range(len(gradient_histograms)):
+            # Transform yellow bars to orange gradient bars
+            animations.append(Transform(histograms[i+1][1], gradient_histograms[i]))
+            
+            # Update the label from tanh(z) to tanh'(z)
+            animations.append(Transform(
+                histograms[i+1][5], 
+                Tex(r"\tanh'(z)", font_size=46).move_to(histograms[i+1][5])
+            ))
+        
+        self.play(*animations, run_time=1.5)
+        self.wait(2)
+
+        # Create sigmoid histograms (only bars, reusing existing axes and labels)
+        sigmoid_histograms = VGroup()
+        
+        concentration_factors = [0.04, 0.05, 0.03]
+        
+        for layer_idx in range(1, len(layers)-1):
+            layer = layers[layer_idx]
+            
+            # Get the existing axis from tanh histograms
+            existing_axis = histograms[layer_idx][0]
+            
+            # Create new sigmoid bars
+            bars = VGroup()
+            concentration = concentration_factors[layer_idx - 1]
+            
+            for i in range(num_bins):
+                x = 0 + (i + 0.5) * (1 / num_bins)  # Range from 0 to 1
+                
+                # Gaussian centered at 0.5
+                height = np.exp(-((x - 0.5)**2) / (2 * concentration**2)) / (concentration * np.sqrt(2 * np.pi))
+                height = height * hist_height * 0.3 * concentration
+                
+                bar = Rectangle(
+                    width=hist_width / num_bins * 0.9,
+                    height=height,
+                    fill_opacity=0.88,
+                    fill_color=YELLOW,
+                    stroke_width=1,
+                    stroke_color=YELLOW
+                )
+                
+                bar.move_to(existing_axis.get_center())
+                bar.shift(RIGHT * ((x - 0.5) * hist_width))
+                bar.shift(UP * height/2)
+                
+                bars.add(bar)
+            
+            sigmoid_histograms.add(bars)
+        
+        # Animate: Fade out tanh bars, fade in sigmoid bars, and update labels
+        animations = []
+        
+        for i in range(len(sigmoid_histograms)):
+            # Fade out old tanh bars (index 1 in each histogram group)
+            animations.append(FadeOut(histograms[i+1][1]))
+            # Fade in new sigmoid bars
+            animations.append(FadeIn(sigmoid_histograms[i]))
+            
+            # Transform labels
+            # Transform -1 label to 0
+            animations.append(Transform(histograms[i+1][2], Text("0", font_size=28).move_to(histograms[i+1][2])))
+            # Transform 0 label to 0.5
+            animations.append(Transform(histograms[i+1][3], Text("0.5", font_size=28).move_to(histograms[i+1][3])))
+            # Transform tanh label to sigma
+            animations.append(Transform(histograms[i+1][5], Tex(r"\sigma(z)", font_size=46).move_to(histograms[i+1][5])))
+        
+        self.play(*animations, run_time=1.5)
+        self.wait(2)
+
+        # Create sigmoid gradient histograms
+        sigmoid_gradient_histograms = VGroup()
+        
+        concentration_factors = [0.04, 0.05, 0.03]
+        
+        for layer_idx in range(1, len(layers)-1):
+            layer = layers[layer_idx]
+            
+            # Get the existing axis
+            existing_axis = histograms[layer_idx][0]
+            
+            # Create gradient bars
+            bars = VGroup()
+            concentration = concentration_factors[layer_idx - 1]
+            
+            for i in range(num_bins):
+                x = 0 + (i + 0.5) * (1 / num_bins)  # Range from 0 to 1
+                
+                # Sigmoid output distribution (Gaussian centered at 0.5)
+                sigmoid_distribution = np.exp(-((x - 0.5)**2) / (2 * concentration**2)) / (concentration * np.sqrt(2 * np.pi))
+                
+                # Sigmoid derivative: σ(x)(1 - σ(x))
+                # Maximum at x=0.5 where derivative = 0.25
+                # Approaches 0 at x=0 and x=1
+                gradient_val = x * (1 - x)
+                
+                # Height based on distribution AND gradient value
+                height = sigmoid_distribution * hist_height * 0.3 * concentration
+                
+                # Scale by gradient value (max 0.25 at center)
+                # Multiply by 4 to normalize since max gradient is 0.25
+                height = height * gradient_val * 4
+                
+                bar = Rectangle(
+                    width=hist_width / num_bins * 0.9,
+                    height=height,
+                    fill_opacity=0.88,
+                    fill_color=ORANGE,
+                    stroke_width=1,
+                    stroke_color=ORANGE
+                )
+                
+                bar.move_to(existing_axis.get_center())
+                bar.shift(RIGHT * ((x - 0.5) * hist_width))
+                bar.shift(UP * height/2)
+                
+                bars.add(bar)
+            
+            sigmoid_gradient_histograms.add(bars)
+        
+        # Transform sigmoid to sigmoid gradient
+        animations = []
+        
+        for i in range(len(sigmoid_gradient_histograms)):
+            # Transform yellow sigmoid bars to orange gradient bars
+            animations.append(Transform(sigmoid_histograms[i], sigmoid_gradient_histograms[i]))
+            
+            # Update label from σ(z) to σ'(z)
+            animations.append(Transform(
+                histograms[i+1][5], 
+                Tex(r"\sigma'(z)", font_size=46).move_to(histograms[i+1][5])
+            ))
+        
+        self.play(*animations, run_time=1.5)
+        self.wait(2)
+
+        
+        for i in range(1,3):
+            histograms.remove(histograms[i][1])
+
+        
+        self.play(FadeOut(sigmoid_histograms), FadeOut(histograms))
+
+
+        self.wait(2)
+
+        a = Text("np.random.randn(fan_out * fan_in)").move_to(a).scale(1.57)
+        a[10:15].set_color("#ff8808")
+        self.play(Write(a))
+        self.wait(2)
+
+        z = Tex(r"z_i = \sum_j w_{ij} x_j").move_to(a).scale(1.7).shift(DOWN*0.23)
+
+        self.play(FadeOut(a), FadeIn(z))
+        self.wait(2)
+
+
+        rect = SurroundingRectangle(z[3:], color="#ff0000").scale(1.066)
+        self.play(ShowCreation(rect))
+        self.wait(2)   
+
+        self.play(FadeOut(rect), FadeOut(z))  
+        
+        
+        saturated_histograms = VGroup()
+        
+        # INPUT LAYER HISTOGRAM (Same as before)
+        input_hist_copy = input_hist.copy()
+        saturated_histograms.add(input_hist_copy)
+
+        input_hist_copy.shift(DOWN*0.4)
+        # HIDDEN LAYER HISTOGRAMS - Saturated tanh (peaked at -1 and +1)
+        saturation_strengths = [0.85, 0.90, 0.93]  # Increasing saturation through layers
+        
+        for layer_idx in range(1, len(layers)-1):
+            layer = layers[layer_idx]
+            
+            # Create x-axis
+            axis_line = Line(
+                LEFT * hist_width/2, 
+                RIGHT * hist_width/2,
+                stroke_width=3,
+                color=WHITE
+            )
+            axis_line.next_to(layer, DOWN, buff=1.71)
+            
+            # Create histogram bars - bimodal distribution at -1 and +1
+            bars = VGroup()
+            saturation = saturation_strengths[layer_idx - 1]
+            
+            for i in range(num_bins):
+                x = -1 + (i + 0.5) * (2 / num_bins)
+                
+                # Bimodal: peaks at -1 and +1, nearly empty in middle
+                # Use a mixture of two narrow Gaussians
+                left_peak = np.exp(-((x + 1)**2) / (2 * 0.03**2))
+                right_peak = np.exp(-((x - 1)**2) / (2 * 0.03**2))
+                
+                height = (left_peak + right_peak) * saturation * hist_height * 0.4
+                
+                bar = Rectangle(
+                    width=hist_width / num_bins * 0.9,
+                    height=height,
+                    fill_opacity=0.88,
+                    fill_color=YELLOW,
+                    stroke_width=1,
+                    stroke_color=YELLOW
+                )
+                
+                bar.move_to(axis_line.get_center())
+                bar.shift(RIGHT * (x * hist_width/2))
+                bar.shift(UP * height/2)
+                
+                bars.add(bar)
+            
+            # Add x-axis labels: -1, 0, 1
+            label_minus1 = Text("-1", font_size=28).next_to(axis_line.get_start(), DOWN, buff=0.15)
+            label_0 = Text("0", font_size=28).next_to(axis_line.get_center(), DOWN, buff=0.15)
+            label_1 = Text("1", font_size=28).next_to(axis_line.get_end(), DOWN, buff=0.15)
+            
+            # Add tanh label
+            tanh_label = Tex(r"\tanh(z)", font_size=46).next_to(axis_line, DOWN, buff=0.7)
+            
+            hist_group = VGroup(axis_line, bars, label_minus1, label_0, label_1, tanh_label)
+            saturated_histograms.add(hist_group)
+        
+        saturated_histograms.shift(UP*0.1)
+
+        saturated_histograms[0][0].shift(UP*0.6)
+        saturated_histograms[0][2].shift(UP*0.48)
+        saturated_histograms[0][1].shift(UP*0.6)
+        # Animate saturated histograms appearing
+        self.play(
+            FadeIn(saturated_histograms[0][0]),
+            FadeIn(saturated_histograms[0][2]),
+            run_time=0.5
+        )
+        self.play(
+            LaggedStartMap(GrowFromEdge, saturated_histograms[0][1], edge=DOWN, lag_ratio=0.05),
+            run_time=1
+        )
+        self.wait(1)
+
+        
+        for hist in saturated_histograms[1:]:
+            self.play(
+                FadeIn(hist[0]),
+                FadeIn(hist[2]),
+                FadeIn(hist[3]),
+                FadeIn(hist[4]),
+                FadeIn(hist[5]),
+                run_time=0.5
+            )
+            self.play(
+                LaggedStartMap(GrowFromEdge, hist[1], edge=DOWN, lag_ratio=0.05),
+                run_time=1
+            )
+            self.wait(0.18)
+        self.wait(2)
+
+        # Create VANISHING gradient histograms for saturated tanh
+        vanishing_gradient_histograms = VGroup()
+        
+        for layer_idx in range(1, len(layers)-1):
+            existing_axis = saturated_histograms[layer_idx][0]
+            
+            bars = VGroup()
+            saturation = saturation_strengths[layer_idx - 1]
+            
+            for i in range(num_bins):
+                x = -1 + (i + 0.5) * (2 / num_bins)
+                
+                # For saturated regions (near ±1), gradient is near 0
+                # For middle region (near 0), gradient would be near 1 but there are few neurons
+                
+                # Bimodal distribution at ±1
+                left_peak = np.exp(-((x + 1)**2) / (2 * 0.03**2))
+                right_peak = np.exp(-((x - 1)**2) / (2 * 0.03**2))
+                
+                # Gradient is ~0 at saturation points
+                gradient_val = 1 - x**2  # tanh derivative
+                
+                # Height is high at ±1 (many neurons) but gradient is ~0 there
+                height = (left_peak + right_peak) * saturation * hist_height * 0.4 * (gradient_val * 0.1)
+                
+                bar = Rectangle(
+                    width=hist_width / num_bins * 0.9,
+                    height=height,
+                    fill_opacity=0.88,
+                    fill_color=ORANGE,
+                    stroke_width=1,
+                    stroke_color=ORANGE
+                )
+                
+                bar.move_to(existing_axis.get_center())
+                bar.shift(RIGHT * (x * hist_width/2))
+                bar.shift(UP * height/2)
+                
+                bars.add(bar)
+            
+            vanishing_gradient_histograms.add(bars)
+        
+        # Transform to gradient histograms
+        animations = []
+        for i in range(len(vanishing_gradient_histograms)):
+            animations.append(Transform(saturated_histograms[i+1][1], vanishing_gradient_histograms[i]))
+            animations.append(Transform(
+                saturated_histograms[i+1][5], 
+                Tex(r"\tanh'(z)", font_size=46).move_to(saturated_histograms[i+1][5])
+            ))
+        
+        self.play(*animations, run_time=1.5)
+        self.wait(2)
+
+        # Create SATURATED sigmoid histograms (peaked at 0 and 1)
+        saturated_sigmoid_histograms = VGroup()
+        
+        for layer_idx in range(1, len(layers)-1):
+            existing_axis = saturated_histograms[layer_idx][0]
+            
+            bars = VGroup()
+            saturation = saturation_strengths[layer_idx - 1]
+            
+            for i in range(num_bins):
+                x = 0 + (i + 0.5) * (1 / num_bins)  # Range from 0 to 1
+                
+                # Bimodal: peaks at 0 and 1
+                left_peak = np.exp(-((x - 0)**2) / (2 * 0.02**2))
+                right_peak = np.exp(-((x - 1)**2) / (2 * 0.02**2))
+                
+                height = (left_peak + right_peak) * saturation * hist_height * 0.4
+                
+                bar = Rectangle(
+                    width=hist_width / num_bins * 0.9,
+                    height=height,
+                    fill_opacity=0.88,
+                    fill_color=YELLOW,
+                    stroke_width=1,
+                    stroke_color=YELLOW
+                )
+                
+                bar.move_to(existing_axis.get_center())
+                bar.shift(RIGHT * ((x - 0.5) * hist_width))
+                bar.shift(UP * height/2)
+                
+                bars.add(bar)
+            
+            saturated_sigmoid_histograms.add(bars)
+        
+        # Animate: Transform to sigmoid
+        animations = []
+        for i in range(len(saturated_sigmoid_histograms)):
+            animations.append(FadeOut(saturated_histograms[i+1][1]))
+            animations.append(FadeIn(saturated_sigmoid_histograms[i]))
+            animations.append(Transform(saturated_histograms[i+1][2], Text("0", font_size=28).move_to(saturated_histograms[i+1][2])))
+            animations.append(Transform(saturated_histograms[i+1][3], Text("0.5", font_size=28).move_to(saturated_histograms[i+1][3])))
+            animations.append(Transform(saturated_histograms[i+1][5], Tex(r"\sigma(z)", font_size=46).move_to(saturated_histograms[i+1][5])))
+        
+        self.play(*animations, run_time=1.5)
+        self.wait(2)
+
+        # Create sigmoid gradient histograms (also vanishing)
+        sigmoid_gradient_histograms = VGroup()
+        
+        for layer_idx in range(1, len(layers)-1):
+            existing_axis = saturated_histograms[layer_idx][0]
+            
+            bars = VGroup()
+            saturation = saturation_strengths[layer_idx - 1]
+            
+            for i in range(num_bins):
+                x = 0 + (i + 0.5) * (1 / num_bins)
+                
+                # Bimodal distribution at 0 and 1
+                left_peak = np.exp(-((x - 0)**2) / (2 * 0.02**2))
+                right_peak = np.exp(-((x - 1)**2) / (2 * 0.02**2))
+                
+                # Sigmoid derivative: σ(x)(1 - σ(x))
+                # At x=0 or x=1, derivative is ~0
+                # At x=0.5, derivative is maximum (0.25)
+                gradient_val = x * (1 - x)
+                
+                height = 2.7 * (left_peak + right_peak) * saturation * hist_height * 0.4 * (gradient_val * 0.3)
+                
+                bar = Rectangle(
+                    width=hist_width / num_bins * 0.9,
+                    height=height,
+                    fill_opacity=0.88,
+                    fill_color=ORANGE,
+                    stroke_width=1,
+                    stroke_color=ORANGE
+                )
+                
+                bar.move_to(existing_axis.get_center())
+                bar.shift(RIGHT * ((x - 0.5) * hist_width))
+                bar.shift(UP * height/2)
+                
+                bars.add(bar)
+            
+            sigmoid_gradient_histograms.add(bars)
+        
+        # Transform to sigmoid gradient
+        animations = []
+        for i in range(len(sigmoid_gradient_histograms)):
+            animations.append(FadeOut(saturated_sigmoid_histograms[i]))
+            animations.append(FadeIn(sigmoid_gradient_histograms[i]))
+            animations.append(Transform(
+                saturated_histograms[i+1][5], 
+                Tex(r"\sigma'(z)", font_size=46).move_to(saturated_histograms[i+1][5])
+            ))
+        
+        self.play(*animations, run_time=1.5)
+        self.wait(2)
+
+        self.play(FadeOut(saturated_histograms), FadeOut(sigmoid_gradient_histograms))
+        self.wait(2)
+
+        uniform = Tex(r"w_{ji} \sim \mathcal{U}(-a,\,a)").move_to(a).scale(1.86)
+ 
+        self.play(ShowCreation(uniform))
+        self.wait(2)
+
+        self.play(Transform(uniform, Tex(r"w_{ji} \sim \mathcal{U}\left(-\sqrt{\frac{1}{n}},\,\sqrt{\frac{1}{n}}\right)").scale(1.45).move_to(uniform)))
+
+        self.wait(2)
+
+
+        self.play(FadeOut(uniform), self.camera.frame.animate.scale(0.92).shift(UP*1.17))
+        
+
+        rect = SurroundingRectangle(layers[0], fill_color="#ff0000", color="#ff0000", fill_opacity=0.13).scale(1.1)
+        self.play(ShowCreation(rect))
+        self.wait(2)
+
+        self.play(Transform(rect, SurroundingRectangle(layers[1], fill_color="#ff0000", color="#ff0000", fill_opacity=0.13).scale(1.1) ))
+        self.wait()
+        self.play(Transform(rect, SurroundingRectangle(layers[2], fill_color="#ff0000", color="#ff0000", fill_opacity=0.13).scale(1.1) ))
+        self.wait()
+        self.play(Transform(rect, SurroundingRectangle(layers[3], fill_color="#ff0000", color="#ff0000", fill_opacity=0.13).scale(1.1) ))
+        self.wait(2)
+
+        
+
+
 class ZeroWeightInitialization(Scene):
     def construct(self):
         self.camera.frame.scale(1.1)
