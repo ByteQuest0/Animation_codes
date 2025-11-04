@@ -3,6 +3,164 @@ import numpy as np
 
 PURE_RED = "#FF0000"
 
+class ReLUScene(Scene):
+    def construct(self):
+        
+        self.camera.frame.scale(0.8).shift(UP*0.34)
+        # Set up axes for ReLU function (no ticks)
+        axes = Axes(
+            x_range=[-3, 5, 1],
+            y_range=[-0.5, 4, 1],
+            axis_config={
+                "stroke_width": 4,
+                "include_tip": True,
+                "include_ticks": False,  # Removed ticks
+                "numbers_to_exclude": [0],
+            },
+        )
+
+        # Create axis labels
+        x_label = Tex("z", font_size=48, color=WHITE).next_to(axes.x_axis.get_end(), RIGHT, buff=0.2)
+        y_label = Tex("ReLU(z)", font_size=48, color=WHITE).next_to(axes.y_axis.get_end(), UP, buff=0.2)
+
+        # ReLU function
+        x_vals = np.linspace(-3, 5, 1000)
+        relu_points = []
+        for x in x_vals:
+            relu_val = max(0, x)  # ReLU function
+            relu_points.append(axes.c2p(x, relu_val))
+
+        relu_graph = VMobject()
+        relu_graph.set_points_as_corners(relu_points)
+        relu_graph.set_stroke(GREEN, width=6)
+
+        # ReLU derivative function (step function)
+        relu_derivative_points = []
+        for x in x_vals:
+            derivative_val = 1 if x > 0 else 0  # ReLU derivative
+            relu_derivative_points.append(axes.c2p(x, derivative_val * 0.8))  # Scale for visibility
+
+        relu_derivative_graph = VMobject()
+        relu_derivative_graph.set_points_as_corners(relu_derivative_points)
+        relu_derivative_graph.set_stroke(ORANGE, width=6)
+
+        # ReLU title and formula positioned in top left
+        relu_title = Text("ReLU Function", font_size=40, color=GREEN)
+        relu_title.to_corner(UL, buff=0.5)
+
+        relu_formula = Tex(r"ReLU(z) = \max(0, z)", font_size=32, color=GREEN).set_color(GREEN)
+        relu_formula.next_to(relu_title, DOWN, buff=0.2)
+        relu_formula.shift(RIGHT*1.8+DOWN*1.5)
+      
+        # Initial derivative formula
+        derivative_formula_1 = Tex(r"ReLU'(z) = \begin{cases} 1 & \ if \ z > 0 \\ 0 & \ if \ z \leq 0 \end{cases}", 
+                                 font_size=26, color=ORANGE).set_color(ORANGE)
+        derivative_formula_1.next_to(relu_formula, DOWN, buff=0.4)
+
+        # Leaky ReLU components (initially hidden)
+        alpha = 0.1  # Leaky ReLU parameter
+        
+        # Leaky ReLU function
+        leaky_relu_points = []
+        for x in x_vals:
+            leaky_relu_val = max(alpha * x, x)  # Leaky ReLU function
+            leaky_relu_points.append(axes.c2p(x, leaky_relu_val))
+
+        leaky_relu_graph = VMobject()
+        leaky_relu_graph.set_points_as_corners(leaky_relu_points)
+        leaky_relu_graph.set_stroke(BLUE, width=6)
+
+        # Leaky ReLU derivative function
+        leaky_relu_derivative_points = []
+        for x in x_vals:
+            derivative_val = 1 if x > 0 else alpha  # Leaky ReLU derivative
+            leaky_relu_derivative_points.append(axes.c2p(x, derivative_val * 0.8))  # Scale for visibility
+
+        leaky_relu_derivative_graph = VMobject()
+        leaky_relu_derivative_graph.set_points_as_corners(leaky_relu_derivative_points)
+        leaky_relu_derivative_graph.set_stroke(RED, width=6).shift(DOWN*0.066)
+
+        # Leaky ReLU title and formulas
+        leaky_relu_title = Text("Leaky ReLU Function", font_size=40, color=BLUE)
+        leaky_relu_title.to_corner(UL, buff=0.5)
+
+        leaky_relu_formula = Tex(r"LReLU(z) = \max(\alpha z, z)", font_size=32, color=BLUE).set_color(BLUE)
+        leaky_relu_formula.move_to(relu_formula)
+
+        alpha_parameter = Tex(r"\alpha = 0.1", font_size=28, color=BLUE).set_color(BLUE)
+        alpha_parameter.next_to(leaky_relu_formula, ORIGIN).shift(DOWN*0.4)
+
+        leaky_derivative_formula = Tex(r"LReLU'(z) = \begin{cases} 1 & \ if \ z > 0 \\ \alpha & \ if \ z \leq 0 \end{cases}", 
+                                     font_size=26, color=RED).set_color(RED)
+        leaky_derivative_formula.move_to(derivative_formula_1)
+
+        # New y-axis label for Leaky ReLU
+        y_label_leaky = Tex("LReLU(z)", font_size=48, color=WHITE).move_to(y_label)
+
+        # Animation
+        self.play(ShowCreation(axes))
+        self.play(Write(x_label), Write(y_label))
+        self.wait(1)
+
+        self.play(Write(relu_formula))
+        self.play(ShowCreation(relu_graph), run_time=2)
+        self.wait(2)
+
+        self.play(Write(derivative_formula_1))
+        self.play(ShowCreation(relu_derivative_graph) , run_time=2)
+        self.wait(2.8)  # Wait as requested
+
+        
+        self.wait(3)
+
+
+        # === Create ReLU-style histogram (only positive side) ===
+        
+        # === Half Gaussian Histogram (Right Half Only) ===
+        
+        hist_width = 6
+        hist_height = 3.0
+        num_bins = 30
+        
+        # Create axis centered at 0
+        axis = NumberLine(
+            x_range=[-3, 3, 1],
+            include_numbers=False,
+            include_tip=True,
+            stroke_width=4,
+        ).shift(DOWN * 2)
+        
+        # Add label "0" in the middle
+        zero_label = Tex("0", font_size=32).next_to(axis.n2p(0), DOWN, buff=0.2)
+        
+        # Create histogram bars — right half of Gaussian
+        bars = VGroup()
+        x_vals = np.linspace(0, 3, num_bins)
+        for x in x_vals:
+            # Gaussian centered near 0
+            height = np.exp(-(x**2) / (2 * 0.7**2)) * hist_height
+            bar = Rectangle(
+                width=hist_width / num_bins * 0.9,
+                height=height,
+                fill_opacity=0.9,
+                fill_color=YELLOW,
+                stroke_width=0,
+            )
+            bar.move_to(axis.n2p(x))
+            bar.shift(UP * height / 2)
+            bars.add(bar)
+        
+        # Group all elements
+        half_gaussian_hist = VGroup(axis, zero_label, bars).shift(RIGHT*15+UP*0.88).scale(1.4)
+                
+        
+        
+        self.play(self.camera.frame.animate.shift(RIGHT*15), ShowCreation(half_gaussian_hist))
+
+
+        self.wait(2)
+
+
 class RandomInitialization(Scene):
     def construct(self):
 
