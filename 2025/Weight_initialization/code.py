@@ -1647,3 +1647,229 @@ class NonZeroConstantWeightInitialization(Scene):
 
         self.play(self.camera.frame.animate.shift(DOWN*1.16), Write(a))
         self.wait(3)
+
+
+
+class Xavier_He(Scene):
+    def construct(self):
+
+        self.camera.frame.scale(1.17).shift(RIGHT*6 + DOWN*1.26)
+
+        HIDDEN_COLOR = BLUE
+        WEIGHT_COLOR = PURE_RED
+
+        layer_sizes = [5, 6, 4, 3, 1]
+        layer_spacing = 2.5
+        neuron_spacing = 1.0
+
+        layers = []
+
+        # ===== CREATE NEURONS =====
+        for i, size in enumerate(layer_sizes):
+            layer = VGroup()
+            for j in range(size):
+                neuron = Circle(radius=0.22, color=WHITE, fill_opacity=0.15)
+                if i == 0:
+                    neuron.set_fill(GREEN, opacity=1).set_stroke(GREEN_B).scale(1.2)
+                elif i == len(layer_sizes) - 1:
+                    neuron.set_fill(HIDDEN_COLOR, opacity=1).set_stroke(BLUE_B).scale(2)
+                else:
+                    neuron.set_fill(HIDDEN_COLOR, opacity=1).set_stroke(BLUE_B).scale(1.7)
+                neuron.move_to(RIGHT * 1.24 * i * layer_spacing + UP * (j - (size - 1) / 2) * neuron_spacing).set_z_index(1)
+                layer.add(neuron)
+            layers.append(layer)
+
+        network = VGroup(*layers)
+
+        # ===== CONNECTION CREATOR =====
+        def create_connections(layers_mobj):
+            conns = VGroup()
+            for l1, l2 in zip(layers_mobj[:-1], layers_mobj[1:]):
+                for n1 in l1:
+                    for n2 in l2:
+                        line = Line(
+                            n1.get_center(), n2.get_center(),
+                            color=WEIGHT_COLOR, stroke_width=1.5
+                        ).set_color(GREY_B)
+                        conns.add(line)
+            return conns
+        
+        # ===== NEURON GROW + WEIGHT CREATION =====
+        self.play(
+            LaggedStartMap(GrowFromCenter, network, lag_ratio=0.05, run_time=1.5),
+        )
+        
+        connections = create_connections(layers).set_z_index(-1)
+        self.play(
+            LaggedStartMap(ShowCreation, connections, lag_ratio=0.01, run_time=2),
+        )
+        self.wait(2)
+
+        a = Text("np.random.randn(Shape) * 0.01")
+        a[10:15].set_color("#ff8808")     
+        a.scale(1.67).shift(DOWN*4.55+RIGHT*6.03)
+        
+        self.play(ShowCreation(a))
+        self.wait(2)
+
+        rect = SurroundingRectangle(a[-4:], color="#ff0000").scale(1.07)
+        self.play(ShowCreation(rect))
+        self.wait(2)
+
+        temp = Text("np.random.randn(Shape) * 1").scale(1.77).move_to(a)
+        temp[10:15].set_color("#ff8808")
+        self.play(
+            Transform(rect, SurroundingRectangle(temp[-1], color="#ff0000").scale(1.07)),
+            Transform(a,temp ))
+        
+        self.wait(2)
+
+        z = Tex(r"z_i = \sum_j^{n_{in}} w_{ij} x_j").move_to(a).scale(1.7).shift(UP*0.2)
+
+        self.play(FadeOut(a), FadeIn(z), FadeOut(rect))
+        self.wait(2)
+
+
+        # ===== SHOW WHAT "n" MEANS =====
+        # Pick the first hidden layer (layer index 1)
+        hidden_layer = layers[1]
+        prev_layer = layers[0]
+
+        # Choose a target neuron (e.g., the middle one in hidden layer)
+        target_neuron = hidden_layer[0]
+
+        # Find incoming and outgoing connections for that neuron
+        incoming_conns = VGroup()
+        outgoing_conns = VGroup()
+
+        for line in connections:
+            start, end = line.get_start(), line.get_end()
+            if np.allclose(end, target_neuron.get_center(), atol=1e-2):
+                incoming_conns.add(line)
+            elif np.allclose(start, target_neuron.get_center(), atol=1e-2):
+                outgoing_conns.add(line)
+
+        # Highlight incoming connections (fan_in)
+        self.play(
+            target_neuron.animate.set_fill("#ff0000", opacity=1).set_stroke(YELLOW, width=3),
+            *[line.animate.set_color(YELLOW).set_stroke(width=4.5) for line in incoming_conns],
+            run_time=1.5
+        )
+        self.wait(1.5)
+
+        # Optional: also flash outgoing (fan_out) to contrast
+        self.play(
+            *[line.animate.set_color(RED).set_stroke(width=4.5) for line in outgoing_conns],
+            run_time=1.2
+        )
+        self.wait(1.5)
+
+
+        # ===== RESTORE EVERYTHING BACK =====
+        self.play(
+            target_neuron.animate.set_fill(HIDDEN_COLOR, opacity=1).set_stroke(BLUE_B, width=1.5),
+            *[line.animate.set_color(GREY_B).set_stroke(width=1.5) for line in incoming_conns],
+            *[line.animate.set_color(GREY_B).set_stroke(width=1.5) for line in outgoing_conns],
+            run_time=1.5
+        )
+        self.wait(2)
+
+
+
+
+        self.play(Transform(z, Tex(r"\operatorname{Var}(z_i) \approx 1").scale(1.7).move_to(z)))
+        self.wait(2)
+
+        self.play(Transform(z, Tex(r"\operatorname{Var}(w_{ij}) = \frac{1}{n_{in}}").scale(1.7).move_to(z)))
+        self.wait(2)
+
+        self.play(Transform(z, Tex(r"\operatorname{\sigma}_{w_{ij}}^2 = \frac{1}{n_{in}}").scale(1.7).move_to(z)))
+        self.wait(2)
+
+        self.play(Transform(z, Tex(r"\sigma_{w_{ij}} = \frac{1}{\sqrt{n_{in}}}").scale(1.7).move_to(z)))
+        self.wait(2)
+
+        self.play(Transform(z, Tex(r"w_{ij} \sim \mathcal{N}(0, 1) \times \frac{1}{\sqrt{n_{in}}}").scale(1.67).move_to(z)))
+        self.wait(2)
+
+        self.play(Transform(z, Tex(r"w_{ij} \sim \mathcal{N}\left(0, \frac{1}{n_{in}}\right)").scale(1.7).move_to(z)))
+        self.wait(2)
+
+        self.play(Transform(z, Tex(r"w_{ij} \sim \mathcal{N}(0, 1) \times \frac{1}{\sqrt{n_{in}}}").scale(1.67).move_to(z)))
+
+
+
+
+        self.play(z.animate.shift(DOWN*6.67), self.camera.frame.animate.shift(DOWN*10))
+        self.wait()
+
+        self.play(Transform(z, Tex(r"w_{ij} \sim \mathcal{N}(0, 1) \times \frac{1}{\sqrt{n_{avg}}}").scale(1.67).move_to(z)))
+        self.wait(2)
+
+        tex = Tex(r"n_{avg} = \frac{n_{in} + n_{out}}{2}").scale(1.7).next_to(z, DOWN, buff=0.88)
+
+        self.play(ShowCreation(tex))
+        self.wait(2)
+
+        text = Text("Xavier/Glorot", weight=BOLD).scale(1.90).next_to(z, UP).shift(UP*0.62).set_color(YELLOW)
+        self.play(ShowCreation(text))
+        self.wait(2)
+
+        self.play(FadeOut(text), FadeOut(tex), Transform(z, Tex(r"w_{ij} \sim \mathcal{N}(0, 1) \times \frac{1}{\sqrt{n_{in}}}").scale(1.67).move_to(z)))
+
+        rect = SurroundingRectangle(z, color=RED_C).scale(1.1)
+        self.play(ShowCreation(rect))
+        self.wait(2)
+
+        tex = Text("Fails For ReLU", weight=BOLD).set_color("#ff0000").next_to(rect, DOWN).shift(DOWN*1.5)
+        tex.scale(3)
+        self.play(Write(tex))
+
+        self.wait(2)
+
+        self.play(FadeOut(VGroup(rect, tex)))
+        self.wait(2)
+
+        self.play(Transform(z, Tex(r"w_{ij} \sim \mathcal{N}(0, 1) \times \frac{2}{\sqrt{n_{in}}}").scale(1.67).move_to(z)))
+        self.wait(2)
+
+        rect = SurroundingRectangle(z, color=RED_C).scale(1.1)
+        self.play(ShowCreation(rect))
+        self.wait(2)
+
+        tex = Text("He Initialization", weight=BOLD).set_color("#f2ff02").next_to(rect, DOWN).shift(DOWN*1.5)
+        tex.scale(2.3)
+        self.play(Write(tex))
+
+        self.wait(2)
+
+        text = Text("Normal/Gaussian", weight=BOLD).set_color("#0fdbff").next_to(rect, UP).shift(UP*0.9)
+        text.scale(2.3)
+        self.play(Write(text))  
+
+        self.wait(2)
+
+        text = Text("Uniform Versions", weight=BOLD).set_color("#3bee49").next_to(rect, UP).shift(UP*1.23+RIGHT*14)
+        text.scale(2.3)
+        self.play(Write(text), self.camera.frame.animate.shift(RIGHT*14))  
+
+        tex_xavier = Tex(r"w_{ij} \sim U(-a, a)").scale(2)
+        
+        tex_xavier.next_to(text, DOWN, buff=1.8).shift(LEFT*3.899)
+
+        self.play(Write(tex_xavier))
+        self.wait(2)
+
+        b = Tex(r", \ a = \sqrt{\frac{6}{n_{in} + n_{out}}}").scale(1.7).next_to(tex_xavier, RIGHT).shift(RIGHT*0.49)
+        self.play(ShowCreation(b))
+        self.wait(2)
+
+        tex_xavier = Tex(r"w_{ij} \sim U(-a, a)").scale(2).next_to(tex_xavier, DOWN, buff=1.66)
+        
+
+        self.play(Write(tex_xavier))
+        self.wait(2)
+
+        b = Tex(r", \ a = \sqrt{\frac{6}{n_{in}}}").scale(1.7).next_to(tex_xavier, RIGHT).shift(RIGHT*0.49)
+        self.play(ShowCreation(b))
+        self.wait(2)
