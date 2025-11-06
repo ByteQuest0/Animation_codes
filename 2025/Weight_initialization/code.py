@@ -2031,3 +2031,213 @@ class Xavier_He(Scene):
         b = Tex(r", \ a = \sqrt{\frac{6}{n_{in}}}").scale(1.7).next_to(tex_xavier, RIGHT).shift(RIGHT*0.49)
         self.play(ShowCreation(b))
         self.wait(2)
+
+
+class Math(Scene):
+
+    def construct(self):
+        
+        
+        a = Tex(
+               r"\operatorname{Var}(a^{(0)}) \approx \operatorname{Var}(a^{(1)}) "
+               r"\approx \operatorname{Var}(a^{(2)}) \approx \cdots \approx "
+               r"\operatorname{Var}(a^{(L)})").scale(1.19).shift(UP) 
+        
+        self.play(ShowCreation(a))
+
+        self.wait()
+
+        brace = Brace(a[:9], UP, buff=0.45).set_color(YELLOW)
+        self.play(GrowFromCenter(brace))
+        self.wait()
+
+        self.play(Transform(brace, Brace(a[10:19], UP, buff=0.45).set_color(YELLOW)))
+        self.play(Transform(brace, Brace(a[20:29], UP, buff=0.45).set_color(YELLOW)))
+        self.play(Transform(brace, Brace(a[-9:], UP, buff=0.45).set_color(YELLOW)))
+        self.wait(2)
+
+
+        self.play(Transform(brace, Brace(a[:9], UP, buff=0.45).set_color(YELLOW)))
+        
+        b = Tex("a^{(0)} = X").next_to(a, DOWN, buff=1.7).scale(2.1)
+        self.play(ShowCreation(b))
+
+        self.wait(2)
+
+        self.play(FadeOut(brace), Transform(b, Tex("a^{(l)} = f(z^{(l)})").move_to(b).scale(2.1)), run_time=0.5)
+        rect = SurroundingRectangle(b).scale(1.1)
+        self.play(ShowCreation(rect))
+        
+        self.wait(2)
+        
+        temp = Tex(r"Var(a^{l-1}) \propto Var(z^l)").move_to(b).scale(2)
+        temp1 = SurroundingRectangle(temp).scale(1.1)
+
+        self.play(Transform(b, temp ), Transform(rect, temp1))
+
+        self.wait(2)
+
+        c = Tex(r"\text{Ideally, } \operatorname{Var}(a^{(0)}) \approx \operatorname{Var}(z^{(1)}) \approx \operatorname{Var}(a^{(1)}) \approx \operatorname{Var}(z^{(2)}) \approx \dots \approx \operatorname{Var}(z^{(L)})").move_to(VGroup((b, rect, a)))
+
+
+        self.play(ReplacementTransform(VGroup((b, rect, a)), c))
+        self.wait(2)
+
+        a = Tex(r"z_i = \sum_{j=1}^{N_{in}} w_{ij} \, x_j").scale(1.7).move_to(c)
+        self.play(Transform(c, a))
+
+        self.wait(2)
+
+        a = Tex(r"z = \sum_{j=1}^{N_{in}} w_{j} \, x_j").scale(1.7).move_to(c)
+        self.play(Transform(c, a))      
+
+        self.wait(2)
+        
+         
+        a = Tex(r"Var(z) =Var(\sum_{j=1}^{N_{in}} w_j x_j)").scale(1.7).move_to(c)
+        self.play(Transform(c, a))      
+
+        self.wait(2)
+
+        a = Tex(r"Var(z) = \sum_{j=1}^{N_{in}} Var(w_j x_j)").scale(1.7).move_to(c)
+        self.play(Transform(c, a))      
+
+        self.wait(2)
+
+        a = Tex(r"Var(z) = \sum_{j=1}^{N_{in}} Var(w_j) Var(x_j)").scale(1.7).move_to(c)
+        self.play(Transform(c, a))      
+
+        self.wait(2)
+
+        a = Tex(r"Var(z) = N_{in} \cdot Var(w) \cdot Var(x)").scale(1.7).move_to(c)
+        self.play(Transform(c, a))      
+
+        self.wait(2)
+
+        brace = Brace(a[:6], UP, buff=0.49).set_color(YELLOW)
+        brace1 = Brace(a[-6:], UP, buff=0.49).set_color(YELLOW)
+
+        self.play(GrowFromCenter(brace), GrowFromCenter(brace1))
+
+        self.wait(2)
+
+
+        a = Tex(r"\operatorname{Var}(w) = \frac{1}{N_{in}}").scale(1.7).move_to(c)
+        self.play(Transform(c, a), FadeOut(brace), FadeOut(brace1)) 
+
+        rect = SurroundingRectangle(a, color=GREEN).scale(1.1)
+        self.play(ShowCreation(rect))
+
+        text = Text("Forward Pass").scale(1.8).to_edge(UP).set_color("#39FF03")
+        self.play(Write(text))
+
+        self.wait(2)
+
+        self.play(VGroup(rect, c).animate.shift(UP*1.55))
+
+
+        text1 = Text("Backward Pass").scale(1.8).set_color("#FF3A03")
+        text1.next_to(rect, DOWN, buff=0.35)
+        self.play(Write(text1))  
+
+        a = Tex(r"\operatorname{Var}(w) = \frac{1}{N_{out}}").scale(1.7)
+        a.next_to(text1, DOWN, buff=0.55)
+        self.play(Write(a)) 
+
+        rect1 = SurroundingRectangle(a, color=RED).scale(1.1)
+        self.play(ShowCreation(rect1))
+
+        self.wait(2)
+
+        f = Tex(r"\operatorname{Var}(w) = \frac{1}{N_{avg}}").scale(1.7)
+        f.move_to(VGroup(a,c,rect1, rect))
+
+        self.play(ReplacementTransform(VGroup(a,c,rect1, rect, text, text1), f))
+        
+        rect = SurroundingRectangle(f).scale(1.1)
+        self.play(ShowCreation(rect))
+        self.play(VGroup(rect, f).animate.shift(UP*1.9))
+
+        a = Tex(r"N_{avg} = \frac{N_{in} + N_{out}}{2}")
+        a.next_to(rect, DOWN, buff=0.66).scale(1.8).shift(DOWN*0.97)
+
+        self.play(ShowCreation(a))
+
+        self.wait(2)
+
+        b = Tex(r"\operatorname{Var}(w) = \frac{2}{N_{in} + N_{out}}").scale(1.7)
+        self.play(ReplacementTransform(VGroup(a,rect, f), b))
+
+        self.wait(2)
+
+        eq1 = Tex(r"w_{ij} \sim \mathcal{U}(-a, a), \ \operatorname{Var}(w_{ij}) = \frac{a^2}{3}").scale(1.5)
+
+        self.play(FadeIn(eq1), FadeOut(b))
+        self.wait(2)
+
+        self.play(eq1.animate.shift(UP*1.44))
+
+        self.wait(2)
+
+        a = Tex(r"\frac{a^2}{3} = \frac{2}{N_{in} + N_{out}}").scale(1.5).next_to(eq1, DOWN, buff=0.99)
+        self.play(TransformFromCopy(eq1[-4:], a[:4]) , self.camera.frame.animate.scale(0.85))
+
+        self.play(FadeIn(a[4]))
+
+        self.play(FadeIn(a[5:]))
+
+        self.wait(2)
+
+        self.play(Transform(a, Tex(r"a = \sqrt{\frac{6}{N_{in} + N_{out}}}").scale(1.65).move_to(a)))
+        self.wait(2)
+
+        z = Tex(r"Var(z) = N_{in} \cdot Var(w) \cdot Var(x)").scale(1.7).move_to(VGroup(a, eq1))
+        self.play(FadeIn(z), FadeOut(a), FadeOut(eq1),  self.camera.frame.animate.scale(1/0.85))      
+
+        self.wait(2)
+
+        brace = Brace(z[:6], UP, buff=0.49).set_color(YELLOW)
+        brace1 = Brace(z[-6:], UP, buff=0.49).set_color(YELLOW)
+
+        self.play(GrowFromCenter(brace), GrowFromCenter(brace1))
+
+        self.wait(2)
+
+        self.play(FadeOut(brace), FadeOut(brace1), z.animate.shift(UP*1.16))
+
+        a = Tex(r"\operatorname{Var}(x) \approx \tfrac{1}{2} \operatorname{Var}(z)").scale(1.8)
+
+        a.next_to(z, DOWN, buff=1.1)
+
+        self.play(ShowCreation(a))
+
+        self.wait(2)
+
+        g = Tex(r"\operatorname{Var}(w) = \frac{1}{N_{in}}").scale(1.99).move_to(Group(a, z))
+        self.play(FadeOut(a), FadeOut(z), FadeIn(g))
+        self.wait(2)
+
+        self.play(Transform(g,Tex(r"\operatorname{Var}(w) = \frac{2}{N_{in}}").scale(1.99).move_to(g)))
+        self.wait(2)
+
+        eq1 = Tex(r"w_{ij} \sim \mathcal{U}(-a, a), \ \operatorname{Var}(w_{ij}) = \frac{a^2}{3}").scale(1.5)
+
+        self.play(FadeIn(eq1), FadeOut(g))
+        self.wait(2)
+
+        self.play(eq1.animate.shift(UP*1.44))
+
+        self.wait(2)
+
+        a = Tex(r"\frac{a^2}{3} = \frac{2}{N_{in}}").scale(1.5).next_to(eq1, DOWN, buff=0.99)
+        self.play(TransformFromCopy(eq1[-4:], a[:4]), self.camera.frame.animate.scale(0.85))
+
+        self.play(FadeIn(a[4]))
+
+        self.play(FadeIn(a[5:]))
+
+        self.wait(2)
+
+        self.play(Transform(a, Tex(r"a = \sqrt{\frac{6}{N_{in}}}").scale(1.5).move_to(a) ))
+        self.wait(2)
+
