@@ -142,4 +142,145 @@ class GaussianNormalization(Scene):
         self.wait(0.5)
         
         self.wait(3)
+
+
+
+class BatchNormMath(Scene):
+
+
+    def construct(self):
+
+        xbatch = Tex(r"x = B = \{x_1, x_2, \dots, x_m\}")
+        mu = Tex(r"\mu_B = \frac{1}{m}\sum_{i=1}^m x_i")
+        var = Tex(r"\sigma_B^2 = \frac{1}{m}\sum_{i=1}^m (x_i - \mu_B)^2")
+        xhat = Tex(r"\hat{x}_i = \frac{x_i - \mu_B}{\sqrt{\sigma_B^2 + \varepsilon}}")
+        y = Tex(r"y_i = \gamma\,\hat{x}_i + \beta")
+
+        xbatch.scale(1.4).shift(UP*2.3)
+
+        mu.next_to(xbatch, DOWN, buff=0.85).scale(1.34)
+
+        self.play(ShowCreation(xbatch))
+
+        self.wait(2)
+
+        self.play(ShowCreation(mu))
+
+        self.wait(2)
+
+        var.next_to(mu, DOWN, buff=0.85).scale(1.34)
+
+        self.play(ShowCreation(var))
+
+        self.wait(2)
+
+        xhat.next_to(var, DOWN, buff=1.25).scale(1.34)
+
+        self.camera.frame.save_state()
+
+        self.play(ShowCreation(xhat), self.camera.frame.animate.shift(DOWN*2.6))
+        self.wait(2)
+
+        rect = SurroundingRectangle(xhat).scale(1.1)
+        self.play(ShowCreation(rect))
+        self.wait(2)
+
+        y.next_to(xhat, DOWN, buff=1.55).scale(1.54)
+
+        self.play(ShowCreation(y), self.camera.frame.animate.shift(DOWN*2.6),
+                 FadeOut(rect))
+        self.wait(2)
+
+        y[3].set_color("#00ff55")
+        for i in range(5):
+                self.play(Indicate(y[3], color="#00ff55"), run_time=0.5)
+                     
+
+        self.wait(2)
+
+        y[-1].set_color("#ff0000")
+        for i in range(5):
+                self.play(Indicate(y[-1], color="#ff0000"), run_time=0.5)
+
+        self.wait(2)
+
+
+        a = Tex(r"x_i = z^{(l)} = W^{(l)} a^{(l-1)} + b^{(l)}").shift(RIGHT*11)
+        a.scale(1.7)
+        self.play(ShowCreation(a), self.camera.frame.animate.restore().shift(RIGHT*11))
+        self.wait(2)
+
+        rect = SurroundingRectangle(a[-4:]).scale(1.12)
+        self.play(ShowCreation(rect))
+
+        self.wait(2)
+
+        self.play(
+              Transform(a, Tex(r"\hat{z}^{(l)} = \frac{z^{(l)} - \mu_B}{\sqrt{\sigma_B^2 + \varepsilon}}").move_to(a).scale(1.88)),
+              FadeOut(rect)
+        )
+
+        self.wait(2)
+
+        self.play(a.animate.scale(0.7).shift(UP*2.5))
+        self.wait(2)
+
+        b = Tex(r"\mu_B = \frac{1}{m}\sum_{i=1}^m z^{(l)}_i").next_to(a, DOWN, buff=1.9).scale(1.7)
         
+
+        self.play(TransformFromCopy(a[-10:-8],b))
+
+        self.wait(2)
+
+        self.play(Transform(b, Tex(r"\mu_B = \frac{1}{m}\sum_{i=1}^m \big(W^{(l)} a_i^{(l-1)} + b^{(l)}\big)").scale(1.7).move_to(b)))
+        self.wait(2)
+
+        self.play(Transform(b, Tex(r"\mu_B = \frac{1}{m}\sum_{i=1}^m W^{(l)} a_i^{(l-1)}"
+            r"+ \frac{1}{m}\sum_{i=1}^m b^{(l)}").scale(1.45).move_to(b)))
+        self.wait(2)
+
+        self.play(Transform(b, Tex(r"\mu_B = W^{(l)}\left(\frac{1}{m}\sum_{i=1}^m a_i^{(l-1)}\right)"
+            r"+ \frac{1}{m}\sum_{i=1}^m b^{(l)}").scale(1.35).move_to(b)))
+        self.wait(2)
+
+
+        self.play(Transform(b, Tex(r"\mu_B = W^{(l)}\left(\frac{1}{m}\sum_{i=1}^m a_i^{(l-1)}\right)"
+            r"+ \frac{1}{m}\sum_{i=1}^m b^{(l)}").scale(1.35).move_to(b)))
+        self.wait(2)
+
+
+
+        rect = SurroundingRectangle(b[-12:]).scale(1.1)
+        self.play(ShowCreation(rect),)
+
+        self.wait(2)
+
+        self.play(Transform(b, Tex(r"\mu_B = W^{(l)}\bar{a} + b^{(l)}").scale(1.65).move_to(b)), FadeOut(rect))
+        self.wait(2)
+        
+
+        s3 = Tex(
+                r"\hat{z}^{(l)} = "
+                r"\frac{\,(W^{(l)} a^{(l-1)} + b^{(l)})"
+                r" - \big(W^{(l)}\bar{a} + b^{(l)}\big)\,}"
+                r"{\sqrt{\sigma_B^2 + \varepsilon}}"
+            ).move_to(b).shift(UP*0.4+LEFT*0.4).scale(1.1)
+            
+        self.play(ReplacementTransform(VGroup(a,b), s3))
+
+        self.play(Transform(s3, Tex(
+                r"\hat{z}^{(l)} = "
+                r"\frac{\,W^{(l)}\big(a^{(l-1)} - \bar{a}\big)\,}"
+                r"{\sqrt{\sigma_B^2 + \varepsilon}}"
+            ).scale(1.65).move_to(s3)),)
+        self.wait(2)  
+
+        self.camera.frame.save_state()
+
+        self.play(self.camera.frame.animate.shift(LEFT*11+DOWN*5.5), FadeOut(s3))
+
+        rect = SurroundingRectangle(y[-1]).scale(1.1)
+
+        self.play(ShowCreation(rect))
+
+        self.wait(2)
