@@ -1,6 +1,354 @@
 from manimlib import *
 import numpy as np
 
+
+class WhyBatchNorm(Scene):
+    def construct(self):
+
+        # --------------------- Camera / Colors ---------------------
+        self.camera.frame.scale(1.17).shift(RIGHT*6 + DOWN*1.26)
+
+        HIDDEN_COLOR = BLUE
+        WEIGHT_COLOR = PURE_RED
+
+        # --------------------- Network layout ----------------------
+        layer_sizes = [5, 4, 5, 3, 1]
+        layer_spacing = 2.5
+        neuron_spacing = 1.0
+
+        layers = []
+
+        # ===== CREATE NEURONS =====
+        for i, size in enumerate(layer_sizes):
+            layer = VGroup()
+            for j in range(size):
+                neuron = Circle(radius=0.22, color=WHITE, fill_opacity=0.15)
+                if i == 0:
+                    neuron.set_fill(GREEN, opacity=1).set_stroke(GREEN_B).scale(1.2)
+                elif i == len(layer_sizes) - 1:
+                    neuron.set_fill(HIDDEN_COLOR, opacity=1).set_stroke(BLUE_B).scale(2)
+                else:
+                    neuron.set_fill(HIDDEN_COLOR, opacity=1).set_stroke(BLUE_B).scale(1.7)
+
+                neuron.move_to(
+                    RIGHT * 1.24 * i * layer_spacing +
+                    UP * (j - (size - 1) / 2) * neuron_spacing
+                ).set_z_index(1)
+
+                layer.add(neuron)
+            layers.append(layer)
+
+        network = VGroup(*layers)
+
+        def create_connections(layers_mobj):
+            conns = VGroup()
+            for l1, l2 in zip(layers_mobj[:-1], layers_mobj[1:]):
+                for n1 in l1:
+                    for n2 in l2:
+                        line = Line(
+                            n1.get_center(), n2.get_center(),
+                            color=WEIGHT_COLOR, stroke_width=1.5
+                        ).set_color(GREY_B)
+                        conns.add(line)
+            return conns
+
+        # show network
+        self.play(LaggedStartMap(GrowFromCenter, network, lag_ratio=0.05, run_time=1.5))
+
+        connections = create_connections(layers).set_z_index(-1)
+        self.play(LaggedStartMap(ShowCreation, connections, lag_ratio=0.01, run_time=2))
+        self.wait(1)
+
+        self.camera.frame.save_state()
+
+        # --------------------- INPUT HISTOGRAM ---------------------
+        hist_width = 2
+        hist_height = 0.8 * 2.4 * 3.2
+        num_bins = 20
+
+        input_layer = layers[0]
+
+        input_axis = Line(
+            LEFT * hist_width/2,
+            RIGHT * hist_width/2,
+            stroke_width=3,
+            color=WHITE
+        )
+        input_axis.next_to(input_layer, DOWN, buff=1.71)
+
+        input_bars = VGroup()
+        input_var = 0.5
+
+        for i in range(num_bins):
+            x = -2 + (i + 0.5) * (4 / num_bins)
+            height = np.exp(-(x**2) / (2 * input_var**2)) / (input_var * np.sqrt(2 * np.pi))
+            height *= hist_height * 0.5 * input_var
+
+            bar = Rectangle(
+                width=hist_width / num_bins * 0.9,
+                height=height,
+                fill_opacity=0.88,
+                fill_color=GREEN,
+                stroke_width=0
+            )
+            bar.move_to(input_axis.get_center() + RIGHT*(x*hist_width/4) + UP*height/2)
+            input_bars.add(bar)
+
+        input_label = Text("Input data", font_size=46)
+        input_label.next_to(input_axis, DOWN, buff=0.7)
+
+        input_hist = VGroup(input_axis, input_bars, input_label).shift(DOWN * 0.3)
+
+        self.play(ShowCreation(input_hist), run_time=1.4)
+        self.wait(2)
+
+        # --------------------- ORIGINAL ICS HISTOGRAMS ---------------------
+        def create_histogram(center_mobj, values):
+            hist_width = 1.6
+            hist_height = 1.0
+            num_bins = len(values)
+
+            axis = Line(LEFT*hist_width/2, RIGHT*hist_width/2, stroke_width=3, color=WHITE)
+            axis.next_to(center_mobj, DOWN, buff=1.4)
+
+            bars = VGroup()
+            for i in range(num_bins):
+                h = values[i] * hist_height
+                bar = Rectangle(
+                    width=hist_width/num_bins*0.9,
+                    height=h,
+                    fill_opacity=0.95,
+                    fill_color=BLUE,
+                    stroke_width=0,
+                )
+                x_shift = -hist_width/2 + (i+0.5)*(hist_width/num_bins)
+                bar.move_to(axis.get_center() + RIGHT*x_shift + UP*h/2)
+                bars.add(bar)
+
+            return VGroup(axis, bars)
+
+        num_bins = 20
+        x = np.linspace(-1, 1, num_bins)
+
+        vals1 = np.exp(-6*(x-0.3)**2); vals1 /= vals1.max()
+        vals2 = np.ones(num_bins)*0.6 + 0.25*np.random.rand(num_bins); vals2 /= vals2.max()
+        vals3 = np.abs(np.random.randn(num_bins)); vals3 /= vals3.max()
+
+        distributions = [vals1, vals2, vals3]
+
+        hidden_hists = VGroup()
+        for idx, layer in enumerate(layers[1:-1]):
+            hist = create_histogram(layer, distributions[idx]).shift(DOWN*0.86).scale(1.3)
+            hidden_hists.add(hist)
+
+        self.wait()
+
+        # ---------------- ICS original rectangle transitions ----------------
+        rect = SurroundingRectangle(layers[0], color="#ff0000", fill_color="#ff0000", fill_opacity=0.2).scale(1.1)
+        self.play(ShowCreation(rect))
+        self.wait(2)
+
+        self.play(Transform(rect, SurroundingRectangle(layers[1], color="#ff0000", fill_color="#ff0000", fill_opacity=0.2).scale(1.1)))
+        self.play(TransformFromCopy(VGroup(input_axis, input_bars), hidden_hists[0]))
+        self.wait(2)
+
+        self.play(Transform(rect, SurroundingRectangle(layers[2], color="#ff0000", fill_color="#ff0000", fill_opacity=0.2).scale(1.1)))
+        self.play(TransformFromCopy(hidden_hists[0], hidden_hists[1]))
+        self.wait(2)
+
+        self.play(Transform(rect, SurroundingRectangle(layers[3], color="#ff0000", fill_color="#ff0000", fill_opacity=0.2).scale(1.1)))
+        self.play(TransformFromCopy(hidden_hists[1], hidden_hists[2]))
+        self.wait(2)
+
+        self.camera.frame.save_state()
+
+        self.play(self.camera.frame.animate.scale(1.2).shift(DOWN*1.12), Uncreate(rect))
+
+        text = Text("Internal Covariate Shift", weight=BOLD).set_color(RED_C)
+        text.scale(2).next_to(hidden_hists[1], DOWN, buff=0.9).shift(DOWN*0.6+LEFT*0.2)
+
+        self.play(ShowCreation(text))
+        self.wait(2)
+
+        self.play(Uncreate(text), self.camera.frame.animate.restore(), Uncreate(hidden_hists))
+        self.wait(2)
+
+        # ---------------------- BEGIN BATCHNORM PART ----------------------
+
+        input_layer = layers[0]
+        hidden_layer1 = layers[1]
+        hidden_layer2 = layers[2]
+        hidden_layer3 = layers[3]
+        output_layer = layers[4]
+
+        original_strokes = [line.get_stroke_width() for line in connections]
+        original_colors = [line.get_color() for line in connections]
+
+        # ---------------- glow / pulse helpers ----------------
+        def create_glow(center_point, radius=0.15, color=YELLOW, intensity=0.3):
+            glow_group = VGroup()
+            for i in range(20):
+                glow_radius = radius*(1+i*0.1)
+                opacity = intensity*(1-i/20)
+                circ = Circle(radius=glow_radius, stroke_opacity=0, fill_color=color, fill_opacity=opacity)
+                circ.move_to(center_point)
+                glow_group.add(circ)
+            return glow_group
+
+        def create_pulse(start_point, color="#ff0000"):
+            dot = Dot(radius=0.12, color=color, fill_opacity=1).move_to(start_point)
+            glow = create_glow(start_point, radius=0.1, color=color, intensity=0.4)
+            return VGroup(glow, dot)
+
+        def find_connection_line(a, b, all_conns, tol=0.12):
+            for L in all_conns:
+                if np.allclose(L.get_start(), a, atol=tol) and np.allclose(L.get_end(), b, atol=tol):
+                    return L
+            return None
+
+        # ---------------- normalization helper ----------------
+        def normalized_distribution(values):
+            w = np.array(values)
+            kernel = np.exp(-0.5*(np.linspace(-2,2,5)**2))
+            kernel /= kernel.sum()
+            sm = np.convolve(w, kernel, mode='same')
+            bins = np.linspace(-1,1,len(w))
+            gauss = np.exp(-3*bins**2); gauss/=gauss.max()
+            out = 0.5*(sm/sm.max()) + 0.5*gauss
+            return out/out.max()
+
+        # ---------------- create BN pillars (rounded, shorter) ----------------
+        def create_bn(left_layer, right_layer, xx=0.8):
+            lx = left_layer.get_center()[0]
+            rx = right_layer.get_center()[0]
+            x = lx*0.3 + rx*0.7
+
+            top = max([n.get_top()[1] for n in left_layer]+[n.get_top()[1] for n in right_layer])
+            bottom = min([n.get_bottom()[1] for n in left_layer]+[n.get_bottom()[1] for n in right_layer])
+            h = (top-bottom)*xx  # 20% shorter
+
+            pillar = RoundedRectangle(
+                width=0.55,
+                height=h,
+                corner_radius=0.25,
+                fill_color=YELLOW,
+                fill_opacity=1.0,
+                stroke_width=0
+            )
+            pillar.move_to([x,(top+bottom)/2,0])
+
+            txt = Text("BN", font_size=36, weight=BOLD).set_color(BLACK)
+            txt.move_to(pillar.get_center())
+            return VGroup(pillar, txt)
+
+        # Show all BN bars at once
+        bn1 = create_bn(layers[0], layers[1], xx=0.85)
+        bn2 = create_bn(layers[1], layers[2], xx=0.98)
+        bn3 = create_bn(layers[2], layers[3])
+
+        self.play(FadeIn(bn1), FadeIn(bn2), FadeIn(bn3), run_time=0.8)
+        self.wait(0.2)
+
+        # ---------------- pulse stage ----------------
+        def run_stage(src_layer, dst_layer, prev_hist, dist_vals):
+            new_vals = normalized_distribution(dist_vals)
+            new_hist = create_histogram(dst_layer, new_vals).scale(1.34).shift(DOWN*0.5)
+
+            pulses=[]
+            lines=set()
+
+            for s in src_layer:
+                for t in dst_layer:
+                    L=find_connection_line(s.get_center(), t.get_center(), connections)
+                    if L is None: continue
+                    p=create_pulse(s.get_center(), "#ff4444")
+                    self.add(p)
+                    pulses.append((p,L))
+                    lines.add(L)
+
+            anims=[]
+            for p,L in pulses:
+                anims.append(MoveAlongPath(p,L,rate_func=linear))
+            for L in lines:
+                anims.append(L.animate.set_stroke(width=4,color="#ff4444"))
+
+            self.play(*anims, run_time=0.9)
+
+            # TransformFromCopy WITHOUT removing old histogram
+            self.play(TransformFromCopy(prev_hist,new_hist), run_time=0.9)
+
+            # Fade pulses & restore colors
+            restores=[]
+            for L in lines:
+                idx=connections.submobjects.index(L)
+                restores.append(L.animate.set_stroke(width=original_strokes[idx],
+                                                     color=original_colors[idx]))
+            self.play(*[FadeOut(p) for p,_ in pulses],*restores,run_time=0.5)
+
+            return new_hist
+
+        # Run BN stages
+        h1 = run_stage(input_layer, hidden_layer1, input_hist, vals1)
+        self.wait(0.2)
+        h2 = run_stage(hidden_layer1, hidden_layer2, h1, vals2)
+        self.wait(0.2)
+        h3 = run_stage(hidden_layer2, hidden_layer3, h2, vals3)
+
+        self.wait(1)
+
+        self.play(*[FadeOut(obj) for obj in [input_hist, h1, h2, h3]], run_time=1.0)
+        
+        # ===================== ADD W^(l), γ^(l), β^(l) BELOW EACH HIDDEN LAYER =====================
+        
+        def add_params_for_layer(layer, l_index):
+            # Create Tex objects
+            W_tex = Tex(r"W^{(%d)}" % l_index, font_size=60)
+            gamma_tex = Tex(r"\gamma^{(%d)}" % l_index, font_size=60)
+            beta_tex  = Tex(r"\beta^{(%d)}"  % l_index, font_size=60)
+        
+            # Stack them vertically
+            param_group = VGroup(W_tex, gamma_tex, beta_tex).arrange(
+                direction=DOWN,
+                buff=0.22,
+                aligned_edge=LEFT
+            )
+        
+            # Position below the layer
+            param_group.next_to(layer, DOWN, buff=0.9)
+        
+            return param_group
+        
+        
+        # Create parameter stacks for each hidden layer
+        params_l2 = add_params_for_layer(layers[1], 1)  # for layer 1→2 weights
+        params_l3 = add_params_for_layer(layers[2], 2)
+        params_l4 = add_params_for_layer(layers[3], 3)
+        
+        # Animate them in
+        self.play(
+            FadeIn(params_l2),
+            FadeIn(params_l3),
+            FadeIn(params_l4),
+            run_time=1.2
+        )
+        
+
+        self.wait(2)
+
+        def update_rules_for_layer():
+            W_up = Tex(r"W^{(l)} \leftarrow W^{(l)} - \alpha \frac{\partial L}{\partial W^{(l)}}",  font_size=38)
+            g_up = Tex(r"\gamma^{(l)} \leftarrow \gamma^{(l)} - \alpha \frac{\partial L}{\partial \gamma^{(l)}}" , font_size=38)
+            b_up = Tex(r"\beta^{(l)} \leftarrow \beta^{(l)} - \alpha \frac{\partial L}{\partial \beta^{(l)}}" , font_size=38)
+        
+            group = VGroup(W_up, g_up, b_up).arrange(DOWN, buff=0.20)
+            return group
+        
+        a = update_rules_for_layer().scale(2.2).shift(RIGHT*22+DOWN*1.3)
+
+        self.play(self.camera.frame.animate.shift(RIGHT*16), ShowCreation(a))
+        self.wait(2)
+
+
 class GaussianNormalization(Scene):
     def construct(self):
 
