@@ -1,6 +1,112 @@
 from manimlib import *
 import numpy as np
 
+class Testing(Scene):
+
+    def construct(self):
+
+        self.camera.frame.scale(1.23).shift(DOWN*2.7)
+
+        xbatch = Tex(r"x = B = \{x_1, x_2, \dots, x_m\}")
+        mu = Tex(r"\mu_B = \frac{1}{m}\sum_{i=1}^m x_i")
+        var = Tex(r"\sigma_B^2 = \frac{1}{m}\sum_{i=1}^m (x_i - \mu_B)^2")
+        xhat = Tex(r"\hat{x}_i = \frac{x_i - \mu_B}{\sqrt{\sigma_B^2 + \varepsilon}}")
+        y = Tex(r"y_i = \gamma\,\hat{x}_i + \beta")
+
+        xbatch.scale(1.4).shift(UP*2.3)
+
+        mu.next_to(xbatch, DOWN, buff=0.85).scale(1.34)
+        var.next_to(mu, DOWN, buff=0.85).scale(1.34)
+        xhat.next_to(var, DOWN, buff=1.25).scale(1.34)
+        y.next_to(xhat, DOWN, buff=1.15).scale(1.54)
+                
+
+        self.add(y, xhat, var, mu)
+
+        y[3].set_color("#00ff55")
+        y[-1].set_color("#ff0000")
+
+        self.wait(2)
+
+        rect = SurroundingRectangle(xhat).scale(1.1)
+        self.play(ShowCreation(rect))
+        self.wait(2)
+
+        self.play(Transform(
+            rect, SurroundingRectangle(Group(mu, var)).scale(1.1)
+        ))
+
+        self.wait(2)
+
+        a = Tex(r"""
+                 \begin{array}{ccccc}
+                 x_1 & x_2 & x_3 & \cdots & x_k \\[8pt]
+                 \mu_{1} & \mu_{2} & \mu_{3} & \cdots & \mu_{k} \\[8pt]
+                 \sigma^2_{1} & \sigma^2_{2} & \sigma^2_{3} & \cdots & \sigma^2_{k}
+                 \end{array}
+                 """)
+        
+
+        a.shift(RIGHT*14+DOWN*2.66).scale(2)
+
+        self.play(ShowCreation(a[:11]), self.camera.frame.animate.shift(RIGHT*14))
+        self.wait(2)
+
+        self.play(TransformFromCopy(a[:11], a[11:22]))
+        self.wait(2)
+
+        self.play(TransformFromCopy(a[11:22], a[22:]))
+        self.wait(2)
+
+        b = Tex(r"m_t = (1-\alpha)m_{t-1} + \alpha x_t").next_to(a, RIGHT).shift(RIGHT*8)
+        b.scale(2.2)
+
+        self.play(ShowCreation(b), self.camera.frame.animate.shift(RIGHT*15.44))
+        self.wait(2)
+
+
+        self.play(Transform(
+            b, Tex(r"m_t = \alpha x_t + \alpha(1-\alpha)x_{t-1} + \alpha(1-\alpha)^2 x_{t-2} + \cdots + (1-\alpha)^t m_0").move_to(b).scale(1.23)
+
+        ))
+
+        self.wait(2)
+
+
+        self.play(FadeOut(b), self.camera.frame.animate.shift(LEFT*15.44))
+
+        self.wait(2)
+
+        self.play(a[11:].animate.shift(UP*0.87), FadeOut(a[:11]))
+
+        brace = Brace(a[11:22], UP, buff=0.7).set_color(YELLOW)
+        brace1 = Brace(a[22:], DOWN, buff=0.7).set_color(YELLOW)
+
+        self.play(GrowFromCenter(brace), GrowFromCenter(brace1))
+
+        mu = Tex(r"\mu").scale(1.7).next_to(brace, UP, buff=0.5)
+        var = Tex(r"\sigma^2").scale(1.7).next_to(brace1, DOWN, buff=0.5)
+       
+        self.play(Write(mu), Write(var))
+        self.wait()
+
+        self.remove(rect)
+
+        rect = SurroundingRectangle(mu).scale(1.25)
+        var = SurroundingRectangle(var).scale(1.1)
+
+        self.play(ShowCreation(rect), ShowCreation(var))
+
+        self.wait(2)
+
+
+        temp = SurroundingRectangle(xhat).scale(1.12)
+
+        self.play(ReplacementTransform(VGroup(rect, var), temp), self.camera.frame.animate.shift(LEFT*14))
+
+
+        self.wait(2)
+
 
 class WhyBatchNorm(Scene):
     def construct(self):
