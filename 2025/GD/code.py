@@ -478,3 +478,183 @@ class GradientDescentComparison(Scene):
         run_optimization_viz(PURPLE_C, "mini")
 
         self.wait(2)
+
+
+class Anim(Scene):
+    def construct(self):
+
+        self.camera.frame.shift(UP*0.27)
+        # ---------------------------------------------------------
+        # 1. SETUP VISUALS
+        # ---------------------------------------------------------
+        
+        # Sizing
+        MEMORY_SIDE = 3.0 
+        DATA_SCALE_FACTOR = 1.5 
+        GRID_ROWS = 4
+        GRID_COLS = 4
+
+        # Title at the top
+        title = Text("Batch Gradient Descent", font_size=48, weight=BOLD).set_color(YELLOW_C)
+        title.to_edge(UP, buff=0.5)
+        self.add(title)
+
+        # The GPU/RAM Container (Square)
+        memory_box = RoundedRectangle(
+            width=MEMORY_SIDE,
+            height=MEMORY_SIDE,
+            corner_radius=0.3,
+            fill_color=BLUE_E,
+            fill_opacity=0.5,
+            stroke_color=BLUE_A,
+            stroke_width=4
+        )
+        memory_box.to_edge(RIGHT, buff=1.5).shift(DOWN*0.46+LEFT*0.24)
+        processing_center = memory_box.get_center()
+
+        # GPU/RAM Label inside the blue box
+        gpu_label = Text("GPU/VRAM", font_size=36, color=WHITE)
+        gpu_label.move_to(memory_box.get_center())
+
+        # The Huge Dataset Container (Big Square)
+        big_data_side = MEMORY_SIDE * DATA_SCALE_FACTOR
+        big_data_box = RoundedRectangle(
+            width=big_data_side,
+            height=big_data_side,
+            corner_radius=0.3,
+            fill_color=YELLOW_E,
+            fill_opacity=0.6,
+            stroke_color=YELLOW_A,
+            stroke_width=4
+        )
+        # Position it off-screen left initially
+        big_data_box.move_to(ORIGIN).to_edge(LEFT, buff=1.0).shift(RIGHT*0.66+DOWN*0.39)
+
+        # ---------------------------------------------------------
+        # ANIMATION PART 1: The Failure (Visual only)
+        # ---------------------------------------------------------
+        self.play(ShowCreation(memory_box), FadeIn(gpu_label))
+        self.wait(0.5)
+
+        # Bring in the huge dataset
+        self.play(
+            FadeIn(big_data_box, shift=RIGHT*2),
+            run_time=1.5
+        )
+        self.wait(1.5)
+
+
+        # Calculate collision point (Edges touching)
+        collision_point = memory_box.get_left() + LEFT * big_data_box.get_width()/2 + RIGHT * 0.1
+
+        # Accelerate into the wall (Crash)
+        self.play(
+            big_data_box.animate.move_to(collision_point),
+            run_time=1.0,
+        )
+
+        # Show failure visual (Red flash, wiggle)
+        self.play(
+            big_data_box.animate.set_color(RED).set_fill(opacity=0.8),
+            big_data_box.animate.rotate(0.1 * PI).set_color(RED),
+            Flash(memory_box.get_left(), color=RED, flash_radius=1.5),
+            run_time=0.2
+        )
+        # Shake it back and forth quickly
+        self.play(big_data_box.animate.rotate(-0.2 * PI), run_time=0.1)
+        self.play(big_data_box.animate.rotate(0.1 * PI), run_time=0.1)
+        self.wait(0.5)
+
+        # Retreat back to original position
+        self.play(
+            big_data_box.animate.move_to(ORIGIN).to_edge(LEFT, buff=1.0).shift(RIGHT*0.66+DOWN*0.39).set_color(YELLOW_E).set_fill(opacity=0.6),
+            run_time=1.2,
+        )
+        self.wait(0.5)
+
+        # ---------------------------------------------------------
+        # ANIMATION PART 2: The Transformation
+        # ---------------------------------------------------------
+        
+        # Change title to "Mini-Batch Gradient Descent"
+        new_title = Text("Mini-Batch Gradient Descent", font_size=48, color=WHITE, weight=BOLD).set_color(PURPLE_B)
+        new_title.to_edge(UP, buff=0.5)
+        
+        self.play(
+            Transform(title, new_title),
+            run_time=1.0
+        )
+        self.wait(0.5)
+        
+        # Create the grid of smaller SQUARES invisible at first
+        mini_batch_group = VGroup()
+        small_side = big_data_side / GRID_COLS - 0.05 
+        
+        for i in range(GRID_ROWS * GRID_COLS):
+            rect = RoundedRectangle(
+                width=small_side,
+                height=small_side,
+                corner_radius=0.1,
+                fill_color=PURPLE,
+                fill_opacity=0.7,
+                stroke_color=PURPLE_A,
+                stroke_width=2
+            )
+            mini_batch_group.add(rect)
+        
+        mini_batch_group.arrange_in_grid(n_rows=GRID_ROWS, n_cols=GRID_COLS, buff=0.05)
+        mini_batch_group.move_to(big_data_box)
+        
+        # Transform huge batch into mini batches at the retreat location
+        self.play(
+            ReplacementTransform(big_data_box, mini_batch_group),
+            run_time=1.5
+        )
+        self.wait(1)
+
+        # ---------------------------------------------------------
+        # ANIMATION PART 3: Processing One by One
+        # ---------------------------------------------------------
+        
+        # Processing loop
+        TINY_SCALE = 1e-5 
+        batches_to_process = list(mini_batch_group)
+
+        for i, batch_rect in enumerate(batches_to_process):
+            # Speed up slightly as it goes
+            alpha = i / len(batches_to_process)
+            step_rate = 0.5 * (1 - alpha) + 0.1 * alpha
+            
+            # Move to center and shrink
+            self.play(
+                batch_rect.animate.move_to(processing_center).scale(TINY_SCALE),
+                run_time=step_rate,
+                rate_func=linear
+            )
+            
+            # Blue flash to indicate successful processing inside GPU
+            if True:
+                flash = Circle(radius=0.5, color=BLUE_B, stroke_width=0).move_to(processing_center)
+                flash.set_fill(BLUE_B, 0.5)
+                self.play(
+                    flash.animate.scale(2.5).set_opacity(0), 
+                    run_time=0.18
+                )
+
+        self.wait(2)
+
+
+        # Change title to "Mini-Batch Gradient Descent"
+        new_title = Text("Redundant Data", font_size=48, color=WHITE, weight=BOLD).set_color(PURE_RED)
+        new_title.to_edge(UP, buff=0.5)
+        
+        self.play(
+            Transform(title, new_title),
+            FadeOut(mini_batch_group), FadeOut(gpu_label), FadeOut(memory_box),
+            run_time=1.0
+        )
+        
+        a = Text("10% Data -> 90% Loss Reduction", font_size=36, color=WHITE).scale(1.25)
+        self.play(Write(a), self.camera.frame.animate.shift(UP*1))
+
+        self.wait(2)
