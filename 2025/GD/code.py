@@ -1,6 +1,154 @@
 from manimlib import *
 import numpy as np
 
+class GradientDescentTypesExplanations(Scene):
+    def construct(self):
+        # ---------------------------------------------------------
+        # Part 1: The General Update Rule
+        # ---------------------------------------------------------
+        
+        # Title for the section
+        general_title = Text("The General Weight Update Rule", font_size=41, weight=BOLD)
+        general_title.to_edge(UP, buff=1.0).shift(DOWN*0.8)
+
+        # The Formula: w gets w minus alpha times gradient of J
+        update_formula = Tex(
+            r"w \leftarrow w - \alpha \cdot \frac{\partial J}{\partial w}",
+            font_size=80
+        )
+        update_formula.next_to(general_title, DOWN, buff=1.5)
+
+
+
+
+        # Animate Part 1
+        self.play(Write(general_title))
+        self.wait(0.5)
+        self.play(Write(update_formula))
+        self.wait(2)
+
+
+        # Transition text
+        transition_text = Text("The difference is in how we calculate J...", font_size=37).set_color(GREEN)
+        transition_text.next_to(update_formula, DOWN, buff=1.0)
+        self.play(Write(transition_text), self.camera.frame.animate.shift(DOWN*0.7))
+        self.wait(1.5)
+
+        # ---------------------------------------------------------
+        # Container for changing content below the main formula
+        # ---------------------------------------------------------
+        content_box = VGroup()
+
+        # ---------------------------------------------------------
+        # Part 2: Batch Gradient Descent (YELLOW_C)
+        # ---------------------------------------------------------
+        
+        batch_title = Text("1. Batch Gradient Descent", color=YELLOW_C, font_size=36).set_color(YELLOW_C)
+        
+        # Definition of J for Batch: Average over ALL N examples
+        # Using standard summation notation
+        batch_j_tex = Tex(
+            r"J_{Batch} = \frac{1}{N} \sum_{i=1}^{N} L_i",
+            font_size=60
+        )
+        batch_j_tex.set_color_by_tex("J_{Batch}", YELLOW_C)
+
+        batch_desc = Text("Summation over ALL N data points.", font_size=34)
+        
+        # Iteration vs Epoch info
+        # In Batch, one update step uses the whole dataset once.
+        batch_epoch_info = VGroup(
+            Text("Relationships:", font_size=34, weight=BOLD).set_color(ORANGE),
+            Text(r"1 Update (Iteration) = 1 Epoch", font_size=30),
+            Text("(An Epoch is one full pass through the dataset)", font_size=25, color=GREY_B)
+        ).arrange(DOWN, buff=0.2, aligned_edge=LEFT)
+
+        # Grouping and positioning
+        batch_group = VGroup(batch_title, batch_j_tex, batch_desc, batch_epoch_info)
+        batch_group.arrange(DOWN, buff=0.7)
+        batch_group.next_to(update_formula, DOWN, buff=1.5)
+
+        # Animate Batch Section
+        self.play(
+            FadeOut(general_title),
+            FadeOut(transition_text),
+            FadeOut(update_formula),
+            Write(batch_title), self.camera.frame.animate.shift(DOWN*5.52).scale(0.92))
+        
+        self.wait(0.5)
+        self.play(Write(batch_j_tex))
+        self.play(Write(batch_desc))
+        self.wait(1)
+        self.play(Write(batch_epoch_info))
+        self.wait(3)
+
+
+        # ---------------------------------------------------------
+        # Part 3: Stochastic Gradient Descent (SGD) (PURE_RED)
+        # ---------------------------------------------------------
+
+        sgd_title = Text("2. Stochastic Gradient Descent (SGD)", color=PURE_RED, font_size=36).set_color(PURE_RED)
+        
+        # Definition of J for SGD: Just one random example's loss
+        sgd_j_tex = Tex(
+            r"J_{SGD} \approx L_i",
+            font_size=60
+        )
+        sgd_j_tex.set_color_by_tex("J_{SGD}", PURE_RED)
+        
+        sgd_desc = VGroup(
+            Text("Calculated on just ONE random example (i).", font_size=34),
+            Text("Very noisy approximation of the true Cost.", font_size=30, color=GREY_B)
+        ).arrange(DOWN, buff=0.46)
+
+        # Iteration vs Epoch info
+        # In SGD, you need N updates to see N examples.
+        sgd_epoch_info = VGroup(
+            Text("Relationship:", font_size=34, weight=BOLD).set_color(ORANGE),
+            Text(r"N Updates (Iterations) = 1 Epoch", font_size=30),
+        ).arrange(DOWN, buff=0.38, aligned_edge=LEFT)
+
+        # Grouping
+        sgd_group = VGroup(sgd_title, sgd_j_tex, sgd_desc, sgd_epoch_info)
+        sgd_group.arrange(DOWN, buff=0.7)
+        sgd_group.move_to(batch_group.get_center())
+
+        # Animate Transition to SGD
+        self.play(ReplacementTransform(batch_group, sgd_group))
+        self.wait(3)
+
+        # ---------------------------------------------------------
+        # Part 4: Mini-Batch Gradient Descent (PURPLE)
+        # ---------------------------------------------------------
+
+        mini_title = Text("3. Mini-Batch Gradient Descent", color=PURPLE, font_size=36).set_color(PURPLE_C)
+        
+        # Definition of J for Mini-Batch: Average over a small batch B
+        # We use 'k in B' to denote indices in the current mini-batch
+        mini_j_tex = Tex(
+            r"J_{MiniBatch} \approx \frac{1}{B} \sum_{k \in B} L_k",
+            font_size=60
+        )
+        mini_j_tex.set_color_by_tex("J_{MiniBatch}", PURPLE_C)
+
+        mini_desc = Text("Subset of size B (e.g., B=32, 64, 128...)", font_size=34)
+
+        # Iteration vs Epoch info
+        # If dataset is N=1000 and Batch B=100, it takes 10 updates to finish an epoch.
+        mini_epoch_info = VGroup(
+            Text("Relationship:", font_size=34, weight=BOLD).set_color(ORANGE),
+            Tex(r"\frac{N}{B} \  Updates \ (Iterations) \ = \ 1 \ Epoch", font_size=50),
+        ).arrange(DOWN, buff=0.42, aligned_edge=LEFT)
+
+        # Grouping
+        mini_group = VGroup(mini_title, mini_j_tex, mini_desc, mini_epoch_info)
+        mini_group.arrange(DOWN, buff=0.5)
+        mini_group.move_to(sgd_group.get_center())
+
+        # Animate Transition to Mini-Batch
+        self.play(ReplacementTransform(sgd_group, mini_group))
+        self.wait(4)
+
 class ConvergenceComparison(Scene):
     def construct(self):
         
