@@ -1,6 +1,147 @@
 from manimlib import *
 import numpy as np
 
+class ConvergenceComparison(Scene):
+    def construct(self):
+        
+        # Create axes
+        axes = Axes(
+            x_range=[0, 50, 5],   # Iterations
+            y_range=[0, 12, 2],   # Cost J
+            width=10,
+            height=6,
+            axis_config={
+                "stroke_width": 2,
+                "include_tip": True,
+                "include_ticks": False,
+            },
+            x_axis_config={"decimal_number_config": {"num_decimal_places": 0}},
+            y_axis_config={"decimal_number_config": {"num_decimal_places": 0}},
+        )
+        axes.set_color(GREY_C)
+        axes.to_edge(DOWN, buff=1.0)
+
+        # Add Labels
+        x_label = axes.get_x_axis_label("Iterations")
+        y_label = axes.get_y_axis_label("J", edge=UP, direction=LEFT, buff=0.2)
+        labels = VGroup(x_label, y_label)
+
+        # --- LEGEND SETUP (Updated Widths) ---
+        legend_box = VGroup()
+        
+        # Config: Text, Color, Box Width
+        # I increased Batch width to 2.8 as requested
+        legend_data = [
+            ("Batch", TEAL, 2.8),      # Increased width
+            ("SGD", RED, 2.0),
+            ("Mini-Batch", GOLD, 3.2) 
+        ]
+        
+        for text_str, color, w in legend_data:
+            # Create the container rectangle with custom width
+            rect = Rectangle(
+                width=w, 
+                height=0.8,
+                fill_color=BLACK,
+                fill_opacity=1,
+                stroke_color=TEAL,
+                stroke_width=3
+            )
+            
+            text = Text(text_str, font_size=20, color=color)
+            line = Line(LEFT, RIGHT, color=color, stroke_width=4).scale(0.5)
+            
+            content = VGroup(line, text).arrange(RIGHT, buff=0.2)
+            content.move_to(rect.get_center())
+            
+            item = VGroup(rect, content)
+            legend_box.add(item)
+
+        # Arrange legend items
+        legend_box.arrange(RIGHT, buff=0.64)
+        legend_box.to_edge(UP, buff=0.5).shift(RIGHT*0.8)
+        
+        # --- INITIAL ANIMATION ---
+        self.play(Write(axes), Write(labels), run_time=1.5)
+        self.play(FadeIn(legend_box, shift=DOWN*0.5), run_time=1.0)
+        self.wait(1)
+
+        # ---------------------------------------------------------
+        # 2. DATA GENERATION 
+        # ---------------------------------------------------------
+        iterations = np.linspace(0, 50, 200) 
+        
+        # 1. BATCH: Smooth decay
+        batch_y = 10 * np.exp(-0.1 * iterations)
+        batch_points = [axes.c2p(x, y) for x, y in zip(iterations, batch_y)]
+
+        # 2. SGD: Decay + HIGH Noise
+        np.random.seed(42)
+        sgd_points = []
+        for x, y_base in zip(iterations, batch_y):
+            noise = np.random.normal(0, 1.2) * (y_base / 10 + 0.2)
+            y_final = y_base + noise
+            y_final = max(y_final, 0) 
+            sgd_points.append(axes.c2p(x, y_final))
+
+        # 3. MINI-BATCH: Decay + MEDIUM Noise
+        np.random.seed(10)
+        mini_points = []
+        for x, y_base in zip(iterations, batch_y):
+            noise = np.random.normal(0, 0.4) * (y_base / 10 + 0.2)
+            y_final = y_base + noise
+            y_final = max(y_final, 0)
+            mini_points.append(axes.c2p(x, y_final))
+
+        # ---------------------------------------------------------
+        # 3. PLOTTING FUNCTION (Returns the graph object now)
+        # ---------------------------------------------------------
+        def plot_curve(points, color, legend_index):
+            graph_path = VMobject()
+            graph_path.set_points_as_corners(points)
+            graph_path.set_color(color)
+            graph_path.set_stroke(width=3)
+
+            # Highlight Legend
+            legend_item = legend_box[legend_index]
+            self.play(
+                legend_item.animate.scale(1.1).set_stroke(opacity=1),
+                run_time=0.5
+            )
+            
+            # Draw Graph
+            self.play(
+                ShowCreation(graph_path),
+                run_time=3.5,
+                rate_func=linear
+            )
+            
+            # Un-highlight
+            self.play(
+                legend_item.animate.scale(1/1.1).set_stroke(opacity=0.5),
+                run_time=0.5
+            )
+            
+            return graph_path
+
+        # ---------------------------------------------------------
+        # 4. EXECUTE SEQUENCE (With FadeOuts)
+        # ---------------------------------------------------------
+        
+        # 1. Batch (Teal)
+        g1 = plot_curve(batch_points, TEAL, 0)
+        self.wait(1)
+        self.play(FadeOut(g1)) # Clean up before next one
+        
+        # 2. SGD (Red)
+        g2 = plot_curve(sgd_points, RED, 1)
+        self.wait(1)
+        self.play(FadeOut(g2)) # Clean up before next one
+        
+        # 3. Mini-Batch (Gold)
+        g3 = plot_curve(mini_points, GOLD, 2)
+        self.wait(2)
+
 class GradientDescentComparison(Scene):
     def construct(self):
 
