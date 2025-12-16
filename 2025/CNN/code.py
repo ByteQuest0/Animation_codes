@@ -1,11 +1,356 @@
 from manimlib import *
 import numpy as np
 
+class Stride_Convolution(Scene):
+    
+    def construct(self):
+        
+        self.camera.frame.shift(LEFT*0.7)
+
+        # ==========================================
+        # SETUP: Create the input image grid (7x7)
+        # ==========================================
+        
+        np.random.seed(123)
+        input_values = np.random.randint(0, 10, (7, 7))
+        
+        cell_size = 0.65
+        
+        # Create input grid
+        input_grid = VGroup()
+        input_cells = {}
+        input_texts = {}
+        
+        for i in range(7):
+            for j in range(7):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text(str(input_values[i, j]), font_size=22, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center()+LEFT*0.15)
+                
+                cell_group = VGroup(cell, value)
+                input_cells[(i, j)] = cell_group
+                input_texts[(i, j)] = value
+                input_grid.add(cell_group)
+        
+        input_grid.center()
+        input_grid.move_to(LEFT * 4.1)
+
+        # ==========================================
+        # SETUP: Create the kernel (3x3)
+        # ==========================================
+        
+        kernel_values = np.array([
+            [-1, 0, 1],
+            [-1, 0, 1],
+            [-1, 0, 1]
+        ])
+        
+        kernel_grid = VGroup()
+        kernel_cells = {}
+        kernel_texts = {}
+        
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(YELLOW, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                val = kernel_values[i, j]
+                value = Text(str(val), font_size=22, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center()+RIGHT*0.1)
+                
+                cell_group = VGroup(cell, value)
+                kernel_cells[(i, j)] = cell_group
+                kernel_texts[(i, j)] = value
+                kernel_grid.add(cell_group)
+        
+        kernel_grid.center()
+        kernel_grid.move_to(ORIGIN).shift(RIGHT*0.35)
+        kernel_grid.set_z_index(4)
+        
+
+        # ==========================================
+        # SETUP: Create output grid (3x3)
+        # With 7x7 input, 3x3 kernel, stride=2: output = (7-3)/2 + 1 = 3
+        # ==========================================
+        
+        output_grid = VGroup()
+        output_cells = {}
+        output_question_marks = {}
+        
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(GREEN, opacity=0.3)
+                cell.set_stroke(GREEN, width=3)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text("?", font_size=22, weight=BOLD)
+                value.set_color(WHITE)
+                value.move_to(cell.get_center())
+                
+                output_grid.add(cell)
+                output_cells[(i, j)] = cell
+                output_question_marks[(i, j)] = value
+        
+        output_grid.center()
+        output_grid.move_to(RIGHT * 3.89)
+        
+        for i in range(3):
+            for j in range(3):
+                output_question_marks[(i, j)].move_to(output_cells[(i, j)].get_center())
+        
+
+        # ==========================================
+        # SETUP: Symbols
+        # ==========================================
+        
+        asterisk = Tex(r"*", font_size=72)
+        asterisk.set_color(WHITE)
+        asterisk.next_to(kernel_grid, LEFT, buff=0.45)
+        
+        equals_sign = Tex(r"=", font_size=72)
+        equals_sign.set_color(WHITE)
+        equals_sign.next_to(kernel_grid, RIGHT, buff=0.45)
+        
+        # ==========================================
+        # PART 1: Show all elements
+        # ==========================================
+        
+        self.play(
+            LaggedStartMap(FadeIn, input_grid, lag_ratio=0.02),
+            run_time=1.5
+        )
+        
+        self.play(Write(asterisk))
+        
+        self.play(
+            LaggedStartMap(FadeIn, kernel_grid, lag_ratio=0.05),
+            run_time=1
+        )
+        
+        self.play(Write(equals_sign))
+        
+        question_marks_group = VGroup(*[output_question_marks[(i, j)] for i in range(3) for j in range(3)])
+        
+        self.play(
+            LaggedStartMap(FadeIn, output_grid, lag_ratio=0.05),
+            LaggedStartMap(FadeIn, question_marks_group, lag_ratio=0.05),
+            run_time=1
+        )
+        self.wait(1)
+
+        # ==========================================
+        # PART 2: Show stride label
+        # ==========================================
+        
+        stride_label = Text("Stride = 2", font_size=42, weight=BOLD)
+        stride_label.set_color(ORANGE)
+        stride_label.to_edge(UP, buff=0.83).shift(UP*0.45)
+        
+        self.play(Write(stride_label), self.camera.frame.animate.shift(UP*0.55),run_time=1)
+        self.wait(1)
+        
+        # ==========================================
+        # PART 3: Fade symbols, move kernel over input
+        # ==========================================
+        
+        self.play(
+            FadeOut(asterisk),
+            FadeOut(equals_sign),
+            run_time=0.8
+        )
+        
+        # Make kernel semi-transparent
+        self.play(
+            *[kernel_cells[(i, j)][0].animate.set_fill(YELLOW, opacity=0.5)
+              for i in range(3) for j in range(3)],
+            run_time=0.5
+        )
+        
+        # Position kernel at first position (center at 1,1)
+        first_center = input_cells[(1, 1)][0].get_center()
+        
+        self.play(
+            kernel_grid.animate.move_to(first_center),
+            run_time=1
+        )
+        self.wait(0.5)
+        
+        # ==========================================
+        # PART 4: Perform stride=2 convolution
+        # ==========================================
+        
+        def compute_conv(input_vals, kernel_vals, row, col):
+            total = 0
+            for ki in range(3):
+                for kj in range(3):
+                    total += input_vals[row + ki, col + kj] * kernel_vals[ki, kj]
+            return total
+        
+        stride = 2
+        
+        # Kernel positions with stride=2:
+        # Top-left of kernel at: (0,0), (0,2), (0,4)
+        #                        (2,0), (2,2), (2,4)
+        #                        (4,0), (4,2), (4,4)
+        # Kernel center at: (1,1), (1,3), (1,5)
+        #                   (3,1), (3,3), (3,5)
+        #                   (5,1), (5,3), (5,5)
+        
+        for out_row in range(3):
+            for out_col in range(3):
+                # Top-left corner of kernel
+                kernel_top_left_i = out_row * stride
+                kernel_top_left_j = out_col * stride
+                
+                # Kernel center for positioning
+                kernel_center_i = kernel_top_left_i + 1
+                kernel_center_j = kernel_top_left_j + 1
+                
+                # Get target position
+                target_center = input_cells[(kernel_center_i, kernel_center_j)][0].get_center()
+                
+                # Move kernel (skip first since already there)
+                if not (out_row == 0 and out_col == 0):
+                    self.play(
+                        kernel_grid.animate.move_to(target_center),
+                        run_time=0.6
+                    )
+                
+                # Calculate convolution value
+                conv_val = compute_conv(input_values, kernel_values, kernel_top_left_i, kernel_top_left_j)
+                
+                # Create result text
+                result_val = Text(str(conv_val), font_size=22, weight=BOLD)
+                result_val.set_color(WHITE)
+                result_val.move_to(output_cells[(out_row, out_col)].get_center())
+                
+                old_q = output_question_marks[(out_row, out_col)]
+                
+                # TransformFromCopy from kernel to output
+                self.play(
+                    TransformFromCopy(kernel_grid, result_val),
+                    FadeOut(old_q),
+                    run_time=0.6
+                )
+                
+                # Add result to output_grid
+                output_grid.add(result_val)
+        
+        self.wait(1)
+        
+        # ==========================================
+        # PART 5: Restore kernel and show final layout
+        # ==========================================
+        
+        # Move kernel back
+        self.play(
+            kernel_grid.animate.next_to(asterisk, RIGHT, buff=0.46),
+            run_time=0.8
+        )
+        
+        # Restore kernel opacity
+        self.play(
+            *[kernel_cells[(i, j)][0].animate.set_fill(YELLOW, opacity=1)
+              for i in range(3) for j in range(3)],
+            run_time=0.5
+        )
+        
+        # Fade in symbols and kernel label
+        self.play(
+            FadeIn(asterisk),
+            FadeIn(equals_sign),
+            run_time=0.8
+        )
+        
+        self.wait(1)
+
+
+        # ==========================================
+        # PART 6: Show formula
+        # ==========================================
+        
+        formula = Tex(r"\frac{n + 2p - f}{s} + 1", font_size=42)
+        formula[3].set_color(RED_B)    # p
+        formula[5].set_color(YELLOW)     # f
+        formula[7].set_color(ORANGE)     # s
+        formula.scale(1.6)
+        formula.to_edge(DOWN).shift(DOWN*0.49)
+
+        self.camera.frame.save_state()
+        
+        self.play(
+            FadeOut(stride_label),
+            self.camera.frame.animate.shift(DOWN*1.87),
+            Write(formula)
+        )
+
+        self.wait(1)
+
+        temp = Tex(r"\left\lfloor \frac{n + 2p - f}{s} \right\rfloor + 1", font_size=42).scale(1.5)
+        temp.move_to(formula)
+        temp[4].set_color(RED_B)
+        temp[6].set_color(YELLOW)
+        temp[8].set_color(ORANGE)
+
+        self.play(
+            Transform(formula,
+                      temp)
+        )
+
+
+        self.wait(2)
+
+        self.play(FadeOut(formula), self.camera.frame.animate.restore().shift(DOWN*0.899+LEFT))
+        
+        brace = Brace(input_grid, LEFT, buff=0.45)
+        brace1 = Brace(input_grid, DOWN, buff=0.45)
+
+        a = Tex("n_h").next_to(brace, LEFT, buff=0.45).scale(1.7)
+        b = Tex("n_w").next_to(brace1, DOWN, buff=0.45).scale(1.7)
+
+        self.play(GrowFromCenter(brace), GrowFromCenter(brace1), ShowCreation(a), ShowCreation(b))
+        self.wait(2)
+
+        formula_h = Tex(r"n_{out}^{h} = \left\lfloor \frac{n_h + 2p - f_h}{s} \right\rfloor + 1", font_size=42)
+
+        formula_w = Tex(r"n_{out}^{w} = \left\lfloor \frac{n_w + 2p - f_w}{s} \right\rfloor + 1", font_size=42)
+    
+        self.play(FadeOut(brace), FadeOut(brace1), FadeOut(a), FadeOut(b), self.camera.frame.animate.restore().shift(DOWN*1.6))
+
+        formula_h = Tex(r"n_{out}^{h} = \left\lfloor \frac{n_h + 2p - f}{s} \right\rfloor + 1", font_size=42)
+
+        formula_w = Tex(r"n_{out}^{w} = \left\lfloor \frac{n_w + 2p - f}{s} \right\rfloor + 1", font_size=42)
+    
+        formula_h.next_to(input_grid, DOWN, buff=0.45).shift(DOWN*0.5).scale(1.2)
+        formula_w.scale(1.2).next_to(formula_h, RIGHT, buff=0.9)
+        self.play(ShowCreation(formula_h), ShowCreation(formula_w))
+        
+        rect1 = SurroundingRectangle(formula_w, stroke_width=5).scale(1.09).set_color(RED_D)
+        rect2 = SurroundingRectangle(formula_h, stroke_width=5).scale(1.09).set_color(RED_D)
+
+        self.play(ShowCreation(rect1), ShowCreation(rect2))
+        self.wait(2)
+
+
+
+
 
 class ConvolutionANDpadding(Scene):
+    
     def construct(self):
 
+
         self.camera.frame.scale(0.95).shift(LEFT*0.5+UP*0.35)
+        
         self.camera.frame.save_state()
 
         # ==========================================
@@ -920,3 +1265,147 @@ class ConvolutionANDpadding(Scene):
         stride_title.next_to(padded_grid, RIGHT, buff=0.65)
         self.play(Write(stride_title),self.camera.frame.animate.shift(RIGHT*0.6) ,run_time=1)
         self.wait(2)
+
+        self.play(Transform(stride_title, Text("Stride = 2", font_size=50, weight=BOLD).set_color(ORANGE).move_to(stride_title)))
+        self.wait(2)
+
+
+        target_pos = combined_center + RIGHT * (1 - 3.5) * cell_size + DOWN * (1 - 3.5) * cell_size
+        self.play(
+                kernel_grid.animate.move_to(target_pos),
+                run_time=0.49
+            )
+        self.wait()
+
+        self.camera.frame.save_state()
+
+        self.play(Uncreate(stride_title), self.camera.frame.animate.shift(RIGHT+DOWN*0.14))
+
+
+        # Create output grid for stride=2 convolution (3x3 output)
+        # With 8x8 padded input, 3x3 kernel, stride=2: output = (8-3)/2 + 1 = 3
+        stride2_output_grid = VGroup()
+        stride2_output_cells = {}
+        stride2_output_question_marks = {}
+        
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(GREEN, opacity=0.3)
+                cell.set_stroke(GREEN, width=3)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text("?", font_size=24, weight=BOLD)
+                value.set_color(WHITE)
+                value.move_to(cell.get_center())
+                
+                stride2_output_grid.add(cell)
+                stride2_output_cells[(i, j)] = cell
+                stride2_output_question_marks[(i, j)] = value
+
+        
+        # Position output grid to the right
+        stride2_output_grid.center()
+        stride2_output_grid.move_to(RIGHT * 4.5)
+        
+        # Position question marks after grid is centered
+        for i in range(3):
+            for j in range(3):
+                stride2_output_question_marks[(i, j)].move_to(stride2_output_cells[(i, j)].get_center())
+        
+        stride2_output_label = Text("Output (Stride=2)", font_size=32, weight=BOLD)
+        stride2_output_label.set_color(GREEN)
+        stride2_output_label.next_to(stride2_output_grid, UP, buff=0.56)
+        
+        # Create VGroup of question marks for animation
+        stride2_question_marks_group = VGroup(*[stride2_output_question_marks[(i, j)] for i in range(3) for j in range(3)])
+        
+
+        self.play(
+            LaggedStartMap(FadeIn, stride2_output_grid, lag_ratio=0.05),
+            LaggedStartMap(FadeIn, stride2_question_marks_group, lag_ratio=0.05),
+            Write(stride2_output_label),
+            run_time=1.5
+        )
+        self.wait(0.5)
+        
+        # ==========================================
+        # Perform stride=2 convolution
+        # ==========================================
+        
+        # With stride=2, kernel positions are at (1,1), (1,3), (1,5), (3,1), (3,3), (3,5), (5,1), (5,3), (5,5)
+        # Output positions: (0,0), (0,1), (0,2), (1,0), (1,1), (1,2), (2,0), (2,1), (2,2)
+        
+        stride = 2
+        
+        for out_row in range(3):
+            for out_col in range(3):
+                # Calculate kernel center position with stride=2
+                kernel_center_i = out_row * stride + 1  # in padded coordinates
+                kernel_center_j = out_col * stride + 1
+                
+                # Get actual position on screen
+                kernel_target_pos = combined_center + RIGHT * (kernel_center_j - 3.5) * cell_size + DOWN * (kernel_center_i - 3.5) * cell_size
+                
+                # Move kernel
+                self.play(
+                    kernel_grid.animate.move_to(kernel_target_pos),
+                    run_time=0.5
+                )
+                
+                # Calculate convolution value
+                conv_val = compute_padded_conv(padded_values, kernel_values, out_row * stride, out_col * stride)
+                
+                # Create result text
+                result_val = Text(str(conv_val), font_size=24, weight=BOLD)
+                result_val.set_color(WHITE)
+                result_val.move_to(stride2_output_cells[(out_row, out_col)].get_center())
+                
+                old_q = stride2_output_question_marks[(out_row, out_col)]
+                
+                # TransformFromCopy from kernel to output
+                self.play(
+                    TransformFromCopy(kernel_grid, result_val),
+                    FadeOut(old_q),
+                    run_time=0.5
+                )
+                
+                # Add result to output grid
+                stride2_output_grid.add(result_val)
+        
+        self.wait(1)
+        
+        # ==========================================
+        # Final cleanup and formula display
+        # ==========================================
+        
+        # Restore kernel opacity
+        self.play(
+            *[kernel_cells[(i, j)][0].animate.set_fill(YELLOW, opacity=1)
+              for i in range(3) for j in range(3)],
+            run_time=0.5
+        )
+        
+        # Move kernel back to a nice position
+        self.play(
+            kernel_grid.animate.shift(RIGHT * 4 + UP),
+            stride2_output_grid.animate.shift(RIGHT * 1.6 +DOWN*0.012),
+            stride2_output_label.animate.shift(RIGHT*1.6),
+            self.camera.frame.animate.scale(1.12).shift(RIGHT*0.7),
+
+            run_time=1
+        )
+        
+
+
+        # Add asterisk
+        asterisk_stride = Tex(r"*", font_size=72)
+        asterisk_stride.set_color(WHITE)
+        asterisk_stride.next_to(kernel_grid, LEFT, buff=0.45)
+        
+        equal = Text("=").next_to(kernel_grid, RIGHT, buff=0.45)
+        self.play(FadeIn(asterisk_stride), FadeIn(equal),run_time=0.5)
+        
+        self.wait(2)
+        
+
