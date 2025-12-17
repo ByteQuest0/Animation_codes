@@ -1405,3 +1405,541 @@ class Stride_Convolution(Scene):
 
         self.play(ShowCreation(rect1), ShowCreation(rect2))
         self.wait(2)
+
+
+class Convolution_Over_Volume(Scene):
+    
+    def construct(self):
+
+        self.camera.frame.shift(LEFT*0.32+UP*0.2)
+        # ==========================================
+        # SETUP: Create 6x6x3 Input Volume (RGB)
+        # ==========================================
+        
+        cell_size = 0.45
+        depth_offset = 0.25  # Offset for 3D effect
+        
+        # Colors for each channel (fill and stroke)
+        channel_colors = [RED, GREEN, BLUE]
+        stroke_colors = ["#ff0000", "#00ff00", "#0000ff"]
+        channel_names = ["R", "G", "B"]
+        
+        # ==========================================
+        # Create RED layer (channel 0)
+        # ==========================================
+        red_layer = VGroup()
+        for i in range(6):
+            for j in range(6):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(RED, opacity=0.9)
+                cell.set_stroke("#ff0000", width=1.5)
+                
+                x_pos = j * cell_size + (2 - 0) * depth_offset
+                y_pos = -i * cell_size + (2 - 0) * depth_offset
+                cell.move_to(RIGHT * x_pos + UP * y_pos)
+                
+                red_layer.add(cell)
+        
+        # ==========================================
+        # Create GREEN layer (channel 1)
+        # ==========================================
+        green_layer = VGroup()
+        for i in range(6):
+            for j in range(6):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(GREEN, opacity=0.9)
+                cell.set_stroke("#00ff00", width=1.5)
+                
+                x_pos = j * cell_size + (2 - 1) * depth_offset
+                y_pos = -i * cell_size + (2 - 1) * depth_offset
+                cell.move_to(RIGHT * x_pos + UP * y_pos)
+                
+                green_layer.add(cell)
+        
+        # ==========================================
+        # Create BLUE layer (channel 2)
+        # ==========================================
+        blue_layer = VGroup()
+        for i in range(6):
+            for j in range(6):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(BLUE, opacity=0.9)
+                cell.set_stroke("#0000ff", width=1.5)
+                
+                x_pos = j * cell_size + (2 - 2) * depth_offset
+                y_pos = -i * cell_size + (2 - 2) * depth_offset
+                cell.move_to(RIGHT * x_pos + UP * y_pos)
+                
+                blue_layer.add(cell)
+        
+        # Group all layers
+        input_volume = VGroup(red_layer, green_layer, blue_layer)
+        input_volume.center()
+        input_volume.move_to(LEFT * 4)
+        
+        # Set z_index so front layers appear on top
+        red_layer.set_z_index(3)    # Red (front)
+        green_layer.set_z_index(2)  # Green (middle)
+        blue_layer.set_z_index(1)   # Blue (back)
+        
+        input_label = Text("6 x 6 x 3", font_size=32, weight=BOLD)
+        input_label.next_to(input_volume, UP, buff=1)
+        
+        rgb_label = Text("(RGB Image)", font_size=24)
+        rgb_label.set_color(GREY_A)
+        rgb_label.next_to(input_label, DOWN, buff=0.35)
+        
+        # ==========================================
+        # SETUP: Create RED Filter (3x3)
+        # ==========================================
+        red_filter = VGroup()
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(YELLOW, opacity=0.85)
+                cell.set_stroke("#ffff00", width=2)
+                
+                # Position relative to center, with depth offset for 3D stacking
+                x_pos = (j - 1) * cell_size + (2 - 0) * depth_offset
+                y_pos = -(i - 1) * cell_size + (2 - 0) * depth_offset
+                cell.move_to(RIGHT * x_pos + UP * y_pos)
+                
+                red_filter.add(cell)
+        
+        red_filter.set_z_index(3.5)  # Above red layer (3)
+        
+        # ==========================================
+        # SETUP: Create GREEN Filter (3x3)
+        # ==========================================
+        green_filter = VGroup()
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(YELLOW, opacity=0.85)
+                cell.set_stroke("#ffff00", width=2)
+                
+                # Position relative to center, with depth offset for 3D stacking
+                x_pos = (j - 1) * cell_size + (2 - 1) * depth_offset
+                y_pos = -(i - 1) * cell_size + (2 - 1) * depth_offset
+                cell.move_to(RIGHT * x_pos + UP * y_pos)
+                
+                green_filter.add(cell)
+        
+        green_filter.set_z_index(2.5)  # Above green layer (2)
+        
+        # ==========================================
+        # SETUP: Create BLUE Filter (3x3)
+        # ==========================================
+        blue_filter = VGroup()
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(YELLOW, opacity=0.85)
+                cell.set_stroke("#ffff00", width=2)
+                
+                # Position relative to center, with depth offset for 3D stacking
+                x_pos = (j - 1) * cell_size + (2 - 2) * depth_offset
+                y_pos = -(i - 1) * cell_size + (2 - 2) * depth_offset
+                cell.move_to(RIGHT * x_pos + UP * y_pos)
+                
+                blue_filter.add(cell)
+        
+        blue_filter.set_z_index(1.5)  # Above blue layer (1)
+        
+        # Group all filters
+        all_filters = VGroup(red_filter, green_filter, blue_filter)
+        
+        filter_label = Text("3 x 3 x 3", font_size=32, weight=BOLD)
+        filter_label.set_color(YELLOW)
+        filter_label.next_to(all_filters, UP, buff=1)
+        
+        filter_sublabel = Text("(Filter)", font_size=24)
+        filter_sublabel.set_color(YELLOW_A)
+        filter_sublabel.next_to(filter_label, DOWN, buff=0.35)
+        
+        # ==========================================
+        # SETUP: Create 4x4 Output (White)
+        # ==========================================
+        
+        output_grid = VGroup()
+        output_cells = {}
+        
+        for i in range(4):
+            for j in range(4):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(WHITE, opacity=0.3)
+                cell.set_stroke("#ffffff", width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                output_cells[(i, j)] = cell
+                output_grid.add(cell)
+        
+        output_grid.center()
+        output_grid.move_to(RIGHT * 4)
+        
+        output_label = Text("4 x 4", font_size=32, weight=BOLD)
+        output_label.set_color(WHITE)
+        output_label.next_to(output_grid, UP, buff=1)
+        
+        output_sublabel = Text("(Output)", font_size=24)
+        output_sublabel.set_color(GREY_A)
+        output_sublabel.next_to(output_label, DOWN, buff=0.35)
+        
+        # ==========================================
+        # SETUP: Symbols
+        # ==========================================
+        
+        asterisk = Tex(r"*", font_size=72)
+        asterisk.set_color(WHITE)
+        asterisk.move_to(LEFT * 1.8)
+        
+        equals_sign = Tex(r"=", font_size=72)
+        equals_sign.set_color(WHITE)
+        equals_sign.move_to(RIGHT * 1.8)
+        
+        # ==========================================
+        # PART 1: Show input volume layer by layer
+        # ==========================================
+        
+        # Show blue layer first (back)
+        self.play(
+            LaggedStartMap(FadeIn, blue_layer, lag_ratio=0.02),
+            run_time=1
+        )
+        
+        # Show green layer (middle)
+        self.play(
+            LaggedStartMap(FadeIn, green_layer, lag_ratio=0.02),
+            run_time=1
+        )
+        
+        # Show red layer (front)
+        self.play(
+            LaggedStartMap(FadeIn, red_layer, lag_ratio=0.02),
+            run_time=1
+        )
+        
+        self.play(
+            Write(input_label),
+            FadeIn(rgb_label),
+            run_time=1
+        )
+        self.wait(0.5)
+        
+        # ==========================================
+        # PART 2: Show filter and symbols
+        # ==========================================
+        
+        self.play(Write(asterisk), run_time=0.5)
+        
+        self.play(
+            LaggedStartMap(FadeIn, all_filters, lag_ratio=0.03),
+            run_time=1.5
+        )
+        
+        self.play(
+            Write(filter_label),
+            FadeIn(filter_sublabel),
+            run_time=1
+        )
+        self.wait(0.5)
+        
+        # ==========================================
+        # PART 3: Show output grid
+        # ==========================================
+        equals_sign.shift(RIGHT*0.3)
+        self.play(Write(equals_sign), run_time=0.5)
+        
+        self.play(
+            LaggedStartMap(FadeIn, output_grid, lag_ratio=0.05),
+            run_time=1
+        )
+        
+        self.play(
+            Write(output_label),
+            FadeIn(output_sublabel),
+            run_time=1
+        )
+        self.wait(1)
+
+        
+        # ==========================================
+        # PART 4: Move filters over input and convolve
+        # ==========================================
+        
+        # Store initial position of filters
+        initial_filter_position = all_filters.get_center()
+        
+        self.play(
+            FadeOut(asterisk),
+            FadeOut(equals_sign),
+            FadeOut(filter_label),
+            FadeOut(filter_sublabel),
+            run_time=0.8
+        )
+        
+        # Make filters fully opaque (0.99) and reduce input layer opacity to 0.4
+        self.play(
+            *[cell.animate.set_fill(YELLOW, opacity=0.99) for cell in red_filter],
+            *[cell.animate.set_fill(YELLOW, opacity=0.99) for cell in green_filter],
+            *[cell.animate.set_fill(YELLOW, opacity=0.99) for cell in blue_filter],
+            *[cell.animate.set_fill(RED, opacity=0.4) for cell in red_layer],
+            *[cell.animate.set_fill(GREEN, opacity=0.4) for cell in green_layer],
+            *[cell.animate.set_fill(BLUE, opacity=0.4) for cell in blue_layer],
+            run_time=0.5
+        )
+        
+        # Calculate first position (kernel center at 1,1 of each layer)
+        red_first_pos = red_layer[7].get_center()      # Cell (1,1) of red layer
+        green_first_pos = green_layer[7].get_center()  # Cell (1,1) of green layer
+        blue_first_pos = blue_layer[7].get_center()    # Cell (1,1) of blue layer
+        
+        # Move all three filters to their starting positions simultaneously
+        self.play(
+            red_filter.animate.move_to(red_first_pos),
+            green_filter.animate.move_to(green_first_pos),
+            blue_filter.animate.move_to(blue_first_pos),
+            run_time=1
+        )
+        self.wait(0.5)
+        
+        # ==========================================
+        # PART 5: Convolve - fill output cells
+        # ==========================================
+        
+        # Iterate through 4x4 output positions
+        for out_row in range(4):
+            for out_col in range(4):
+                # Calculate filter positions for all channels
+                target_cell_idx = (out_row + 1) * 6 + (out_col + 1)
+                
+                red_target_pos = red_layer[target_cell_idx].get_center()
+                green_target_pos = green_layer[target_cell_idx].get_center()
+                blue_target_pos = blue_layer[target_cell_idx].get_center()
+                
+                # Move all filters simultaneously (skip first position)
+                if not (out_row == 0 and out_col == 0):
+                    self.play(
+                        red_filter.animate.move_to(red_target_pos),
+                        green_filter.animate.move_to(green_target_pos),
+                        blue_filter.animate.move_to(blue_target_pos),
+                        run_time=0.35
+                    )
+                
+                # Fill output cell
+                self.play(
+                    output_cells[(out_row, out_col)].animate.set_fill(WHITE, opacity=0.9),
+                    run_time=0.25
+                )
+        
+        self.wait(1)
+        
+        # ==========================================
+        # PART 6: Restore filter and final layout
+        # ==========================================
+        
+        
+        # Restore filter and input layer opacities
+        self.play(
+            *[cell.animate.set_fill(RED, opacity=0.9) for cell in red_layer],
+            *[cell.animate.set_fill(GREEN, opacity=0.9) for cell in green_layer],
+            *[cell.animate.set_fill(BLUE, opacity=0.9) for cell in blue_layer],
+            VGroup(red_filter, blue_filter, green_filter).animate.next_to(asterisk, RIGHT, buff=0.8) ,
+            run_time=0.5
+        )
+        self.play(
+            *[cell.animate.set_fill(YELLOW, opacity=0.9) for cell in red_filter],
+            *[cell.animate.set_fill(YELLOW, opacity=0.9) for cell in green_filter],
+            *[cell.animate.set_fill(YELLOW, opacity=0.9) for cell in blue_filter],
+        )
+        
+        self.play(
+            FadeIn(asterisk),
+            FadeIn(equals_sign),
+            FadeIn(filter_label),
+            FadeIn(filter_sublabel),
+            run_time=0.8
+        )
+        
+        self.wait(1)
+        
+        # ==========================================
+        # PART 7: Key insight text
+        # ==========================================
+        
+        insight = Text("3D Filter collapses volume → 2D Output", font_size=40, weight=BOLD)
+        insight.set_color(TEAL_B)
+        insight.to_edge(DOWN, buff=0.8)
+        
+        self.play(Write(insight), self.camera.frame.animate.shift(DOWN*0.5),run_time=1.5)
+        
+        self.wait(2)
+
+        self.camera.frame.save_state()
+
+        self.play(
+            FadeOut(insight),
+            FadeOut(output_label),
+            FadeOut(filter_label),
+            FadeOut(input_label),
+            FadeOut(output_sublabel),
+            FadeOut(filter_sublabel),
+            FadeOut(rgb_label),
+            FadeOut(output_grid),
+        )
+
+        # ==========================================
+        # PART 8: Create Purple and Maroon Filters + Outputs
+        # ==========================================
+        
+        def create_filter_set(filter_color, stroke_color, base_z_index):
+            """Helper function to create a 3x3x3 filter set"""
+            red_filter_layer = VGroup()
+            for i in range(3):
+                for j in range(3):
+                    cell = Square(side_length=cell_size)
+                    cell.set_fill(filter_color, opacity=0.85)
+                    cell.set_stroke(stroke_color, width=2)
+                    
+                    x_pos = (j - 1) * cell_size + (2 - 0) * depth_offset
+                    y_pos = -(i - 1) * cell_size + (2 - 0) * depth_offset
+                    cell.move_to(RIGHT * x_pos + UP * y_pos)
+                    
+                    red_filter_layer.add(cell)
+            
+            red_filter_layer.set_z_index(base_z_index + 0.5)
+            
+            green_filter_layer = VGroup()
+            for i in range(3):
+                for j in range(3):
+                    cell = Square(side_length=cell_size)
+                    cell.set_fill(filter_color, opacity=0.85)
+                    cell.set_stroke(stroke_color, width=2)
+                    
+                    x_pos = (j - 1) * cell_size + (2 - 1) * depth_offset
+                    y_pos = -(i - 1) * cell_size + (2 - 1) * depth_offset
+                    cell.move_to(RIGHT * x_pos + UP * y_pos)
+                    
+                    green_filter_layer.add(cell)
+            
+            green_filter_layer.set_z_index(base_z_index - 0.5)
+            
+            blue_filter_layer = VGroup()
+            for i in range(3):
+                for j in range(3):
+                    cell = Square(side_length=cell_size)
+                    cell.set_fill(filter_color, opacity=0.85)
+                    cell.set_stroke(stroke_color, width=2)
+                    
+                    x_pos = (j - 1) * cell_size + (2 - 2) * depth_offset
+                    y_pos = -(i - 1) * cell_size + (2 - 2) * depth_offset
+                    cell.move_to(RIGHT * x_pos + UP * y_pos)
+                    
+                    blue_filter_layer.add(cell)
+            
+            blue_filter_layer.set_z_index(base_z_index - 1.5)
+            
+            return VGroup(red_filter_layer, green_filter_layer, blue_filter_layer)
+        
+        def create_output_grid_filled(fill_color, stroke_color, opacity=0.9):
+            """Helper function to create a 4x4 output grid (already filled)"""
+            output_grid_new = VGroup()
+            
+            for i in range(4):
+                for j in range(4):
+                    cell = Square(side_length=cell_size)
+                    cell.set_fill(fill_color, opacity=opacity)
+                    cell.set_stroke(stroke_color, width=2)
+                    cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                    
+                    output_grid_new.add(cell)
+            
+            output_grid_new.center()
+            return output_grid_new
+        
+        # Create purple and maroon filter sets
+        purple_filters = create_filter_set(PURPLE, "#9370db", 4)
+        maroon_filters = create_filter_set(MAROON, "#800000", 0.5)
+        
+        # Position filters (purple above yellow, maroon below yellow)
+        yellow_position = VGroup(red_filter, green_filter, blue_filter).get_center()
+        
+        purple_filters.move_to(yellow_position + UP * 1.5).shift(UP*0.66)
+        maroon_filters.move_to(yellow_position + DOWN * 1.5).shift(DOWN*0.66)
+        
+        # Create output grids (already filled)
+        purple_output = create_output_grid_filled(PURPLE, "#9370db", opacity=0.9)
+        maroon_output = create_output_grid_filled(MAROON, "#800000", opacity=0.9)
+        
+        # Position output grids
+        output_position = RIGHT * 4  # Same x position as original output grid
+        purple_output.move_to(output_position + UP * 2.3).set_z_index(10)
+        maroon_output.move_to(output_position + DOWN * 2.3).set_z_index(-1)
+        
+        # ==========================================
+        # PART 9: Fade in purple and maroon filters with outputs
+        # ==========================================
+        
+        self.play(
+            LaggedStartMap(FadeIn, purple_filters, lag_ratio=0.03),
+            LaggedStartMap(FadeIn, purple_output, lag_ratio=0.05),
+            run_time=1.5
+        )
+        
+        self.wait(0.5)
+        
+        self.play(
+            LaggedStartMap(FadeIn, maroon_filters, lag_ratio=0.03),
+            LaggedStartMap(FadeIn, maroon_output, lag_ratio=0.05),
+            run_time=1.5
+        )
+        
+        self.wait(1)
+        
+        # ==========================================
+        # PART 10: Stack all output grids together
+        # ==========================================
+        
+        # Recreate the yellow output grid at its current position
+        yellow_output = VGroup()
+        for i in range(4):
+            for j in range(4):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(YELLOW, opacity=0.9)
+                cell.set_stroke("#ffff00", width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                yellow_output.add(cell)
+        
+        yellow_output.center()
+        yellow_output.move_to(output_position).set_z_index(4)
+        
+        # Fade in the yellow output
+        self.play(LaggedStartMap(FadeIn, yellow_output, lag_ratio=0.05), run_time=1)
+        
+        self.wait(0.5)
+        
+        # Stack all three outputs together with 3D depth effect
+        stacked_center = output_position
+        
+        self.play(
+            purple_output.animate.move_to(stacked_center + UP * 0.4 + RIGHT * 0.4),
+            yellow_output.animate.move_to(stacked_center),
+            maroon_output.animate.move_to(stacked_center + DOWN * 0.4 + LEFT * 0.4),
+            run_time=1.5
+        )
+        
+        self.wait(1)
+
+        
+        # ==========================================
+        # PART 11: Final insight
+        # ==========================================
+        
+        insight2 = Text("Multiple Filters → Multiple Feature Maps", font_size=42, weight=BOLD)
+        insight2.set_color(TEAL_B)
+        insight2.to_edge(DOWN, buff=0.8).shift(DOWN*0.99)
+        
+        self.play(Write(insight2), self.camera.frame.animate.scale(1.1).shift(DOWN*0.4) ,run_time=1.5)
+        
+        self.wait(2)
+
