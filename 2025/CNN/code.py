@@ -2611,3 +2611,369 @@ class EdgeDetection(Scene):
         
 
         self.wait(3)
+
+
+class ImageFilters(Scene):
+    
+    def construct(self):
+
+        self.camera.frame.shift(LEFT*1.1 + UP*1.1)
+
+        # ==========================================
+        # Helper: Manual 2D convolution 
+        # ==========================================
+        
+        def convolve2d(image, kernel):
+            """Apply 2D convolution with edge padding"""
+            kh, kw = kernel.shape
+            pad_h, pad_w = kh // 2, kw // 2
+            
+            # Pad image
+            padded = np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='reflect')
+            
+            h, w = image.shape
+            result = np.zeros_like(image, dtype=np.float64)
+            
+            for i in range(h):
+                for j in range(w):
+                    region = padded[i:i+kh, j:j+kw]
+                    result[i, j] = np.sum(region * kernel)
+            
+            return result
+        
+        def apply_filter_rgb(rgb_image, kernel):
+            """Apply convolution filter to RGB image"""
+            result = np.zeros_like(rgb_image, dtype=np.float64)
+            for c in range(3):
+                result[:, :, c] = convolve2d(rgb_image[:, :, c].astype(np.float64), kernel)
+            return np.clip(result, 0, 255).astype(np.uint8)
+        
+        # ==========================================
+        # Image Generation (Sunset Pixel Art)
+        # ==========================================
+        
+        img_size = 36
+        image_rgb = np.zeros((img_size, img_size, 3), dtype=np.uint8)
+        
+        # Colors
+        SKY_TOP = np.array([25, 25, 112])       
+        SKY_MID = np.array([255, 100, 50])      
+        SKY_LOW = np.array([255, 180, 100])     
+        SUN_COLOR = np.array([255, 255, 50])    
+        SUN_GLOW = np.array([255, 200, 80])     
+        MOUNTAIN1 = np.array([50, 50, 70])      
+        MOUNTAIN2 = np.array([70, 60, 90])      
+        GRASS = np.array([34, 139, 34])         
+        WATER = np.array([30, 144, 255])        
+        WATER_LIGHT = np.array([100, 180, 255]) 
+        
+        # Draw Scenery
+        for i in range(img_size):
+            for j in range(img_size):
+                if i < 8:
+                    t = i / 8
+                    image_rgb[i, j] = (SKY_TOP * (1-t) + SKY_MID * t).astype(np.uint8)
+                elif i < 15:
+                    t = (i - 8) / 7
+                    image_rgb[i, j] = (SKY_MID * (1-t) + SKY_LOW * t).astype(np.uint8)
+                else:
+                    image_rgb[i, j] = SKY_LOW
+        
+        sun_center = (10, 18)
+        sun_radius = 4
+        for i in range(img_size):
+            for j in range(img_size):
+                dist = np.sqrt((i - sun_center[0])**2 + (j - sun_center[1])**2)
+                if dist < sun_radius:
+                    image_rgb[i, j] = SUN_COLOR
+                elif dist < sun_radius + 2:
+                    t = (dist - sun_radius) / 2
+                    image_rgb[i, j] = (SUN_GLOW * (1-t) + image_rgb[i, j] * t).astype(np.uint8)
+        
+        for j in range(img_size):
+            peak1 = 12 - int(7 * np.exp(-((j - 8)**2) / 40))
+            for i in range(peak1, 24):
+                if i < img_size:
+                    image_rgb[i, j] = MOUNTAIN1
+            peak2 = 14 - int(5 * np.exp(-((j - 28)**2) / 35))
+            for i in range(peak2, 24):
+                if i < img_size and not np.array_equal(image_rgb[i, j], MOUNTAIN1):
+                    image_rgb[i, j] = MOUNTAIN2
+        
+        for i in range(24, 30):
+            for j in range(img_size):
+                wave_offset = 0.5 * np.sin(j * 0.6 + i * 0.4)
+                if (j + int(wave_offset * 2)) % 4 < 2:
+                    image_rgb[i, j] = WATER
+                else:
+                    image_rgb[i, j] = WATER_LIGHT
+        
+        for i in range(30, img_size):
+            for j in range(img_size):
+                if (i + j) % 3 == 0:
+                    image_rgb[i, j] = (GRASS * 0.8).astype(np.uint8)
+                else:
+                    image_rgb[i, j] = GRASS
+        
+        np.random.seed(42)
+        for _ in range(12):
+            si, sj = np.random.randint(0, 6), np.random.randint(0, img_size)
+            image_rgb[si, sj] = [255, 255, 255]
+        
+        # ==========================================
+        # Kernels
+        # ==========================================
+        mean_kernel = np.ones((3, 3)) / 9
+        gaussian_kernel = np.array([[1, 2, 1],[2, 4, 2],[1, 2, 1]], dtype=np.float64) / 16
+        sharpen_kernel = np.array([[0, -1, 0],[-1, 5, -1],[0, -1, 0]], dtype=np.float64)
+        emboss_kernel = np.array([[-2, -1, 0],[-1, 1, 1],[0, 1, 2]], dtype=np.float64)
+        edge_kernel = np.array([[0, 1, 0],[1, -4, 1],[0, 1, 0]], dtype=np.float64)
+        
+        # ==========================================
+        # Visualization Helpers
+        # ==========================================
+        
+        def create_pixel_image(rgb_array, cell_size=0.08, position=ORIGIN):
+            h, w = rgb_array.shape[:2]
+            pixel_grid = VGroup()
+            for i in range(h):
+                for j in range(w):
+                    cell = Square(side_length=cell_size)
+                    r, g, b = rgb_array[i, j]
+                    color = rgb_to_color([r/255, g/255, b/255])
+                    cell.set_fill(color, opacity=1)
+                    cell.set_stroke(width=0)
+                    cell.move_to(position + RIGHT * (j - w/2) * cell_size + DOWN * (i - h/2) * cell_size)
+                    pixel_grid.add(cell)
+            return pixel_grid
+        
+        def create_kernel_grid(kernel, color, k_cell_size=0.85, use_fractions=False):
+            kernel_grid = VGroup()
+            for i in range(3):
+                for j in range(3):
+                    cell = Square(side_length=k_cell_size)
+                    cell.set_fill(color, opacity=0.7)
+                    cell.set_stroke(WHITE, width=2)
+                    cell.move_to(RIGHT * (j - 1) * k_cell_size + DOWN * (i - 1) * k_cell_size)
+                    
+                    val = kernel[i, j]
+                    if use_fractions:
+                        val_str = "1/9"
+                    elif abs(val - round(val)) < 0.001:
+                        val_str = str(int(round(val)))
+                    else:
+                        val_str = f"{val:.2f}"
+                    
+                    val_text = Text(val_str, font_size=20, weight=BOLD).set_color(WHITE)
+                    val_text.move_to(cell.get_center())
+                    kernel_grid.add(VGroup(cell, val_text))
+            return kernel_grid
+        
+        # ==========================================
+        # SCENE SETUP
+        # ==========================================
+        
+        cell_size = 0.085
+        
+        title = Text("Image Filters", font_size=44, weight=BOLD).set_color(WHITE)
+        title.to_edge(UP, buff=0.35)
+        
+        # 1. POSITION ORIGINAL IMAGE (FAR LEFT)
+        original_pos_center = LEFT * 5.5
+        original_image = create_pixel_image(image_rgb, cell_size, original_pos_center)
+        
+        original_label = Text("Original", font_size=40, weight=BOLD).set_color(WHITE)
+        original_label.next_to(original_image, UP, buff=0.45)
+        
+        self.play(
+            LaggedStartMap(FadeIn, original_image, lag_ratio=0.0003),
+            Write(original_label),
+            run_time=1.5
+        )
+        self.wait(0.5)
+
+        filters_info = [
+            {"name": "Mean Blur", "kernel": mean_kernel, "color": BLUE, "use_fractions": True},
+            {"name": "Gaussian Blur", "kernel": gaussian_kernel, "color": TEAL, "use_fractions": False},
+            {"name": "Sharpen", "kernel": sharpen_kernel, "color": ORANGE, "use_fractions": False},
+            {"name": "Emboss", "kernel": emboss_kernel, "color": PURPLE, "use_fractions": False},
+            {"name": "Edge Detection", "kernel": edge_kernel, "color": GREEN, "use_fractions": False},
+        ]
+        
+        # ==========================================
+        # FIRST FILTER
+        # ==========================================
+        
+        first_filter = filters_info[0]
+        
+        # 2. CREATE & SCALE KERNEL ELEMENTS (Middle Section)
+        
+        # Create elements first
+        kernel_grid = create_kernel_grid(first_filter["kernel"], first_filter["color"], use_fractions=first_filter["use_fractions"])
+        
+        filter_name = Text(first_filter["name"], font_size=56, weight=BOLD) # Slightly larger font base
+        filter_name.set_color(first_filter["color"]).shift(UP*1.6)
+        
+        kernel_label = Text("Kernel", font_size=45, weight=BOLD).shift(UP*0.52) # Slightly larger font base
+        kernel_label.set_color(first_filter["color"]).next_to(kernel_grid, UP, buff=0.55)
+        
+        # Group them to scale together or scale individually
+        # You wanted the whole middle filter section scaled by 1.3
+        
+        
+        # Layout Middle Section
+        # Position Grid relative to Original
+        kernel_grid.next_to(original_image, RIGHT, buff=1.8) 
+        
+        # Position labels relative to Grid
+        kernel_label.next_to(kernel_grid, UP, buff=0.55)
+        filter_name.next_to(kernel_label, UP, buff=1.3)
+        
+        # 3. POSITION OUTPUT (RIGHT OF KERNEL)
+        filtered_rgb = apply_filter_rgb(image_rgb, first_filter["kernel"])
+        output_image = create_pixel_image(filtered_rgb, cell_size, ORIGIN)
+        output_image.next_to(kernel_grid, RIGHT, buff=1.8)
+        
+        output_pos_center = output_image.get_center()
+        
+        output_label = Text("Result", font_size=44, weight=BOLD)
+        output_label.set_color(first_filter["color"])
+        output_label.next_to(output_image, UP, buff=0.45)
+        
+        self.play(Write(filter_name), run_time=0.5)
+        self.play(
+            LaggedStartMap(FadeIn, kernel_grid, lag_ratio=0.03),
+            Write(kernel_label),
+            run_time=0.6
+        )
+
+
+
+        # Scanning animation
+        scan_rect = Rectangle(width=3 * cell_size, height=3 * cell_size)
+        scan_rect.set_fill(first_filter["color"], opacity=0.4)
+        scan_rect.set_stroke(first_filter["color"], width=3)
+        scan_rect.move_to(original_pos_center + UP * (img_size/2 - 1.5) * cell_size + LEFT * (img_size/2 - 1.5) * cell_size)
+        scan_rect.set_z_index(15)
+        
+        self.play(FadeIn(scan_rect), run_time=0.2)
+        
+        scan_positions = []
+        rows_to_scan = 5
+        for row in range(rows_to_scan):
+            actual_row = row * (img_size - 3) // (rows_to_scan - 1)
+            y_pos = original_pos_center[1] + (img_size/2 - 1.5 - actual_row) * cell_size
+            if row % 2 == 0:
+                for col in [0, img_size - 3]:
+                    x_pos = original_pos_center[0] + (-img_size/2 + 1.5 + col) * cell_size
+                    scan_positions.append(np.array([x_pos, y_pos, 0]))
+            else:
+                for col in [img_size - 3, 0]:
+                    x_pos = original_pos_center[0] + (-img_size/2 + 1.5 + col) * cell_size
+                    scan_positions.append(np.array([x_pos, y_pos, 0]))
+        
+        for pos in scan_positions:
+            self.play(scan_rect.animate.move_to(pos), run_time=0.338, rate_func=linear)
+        
+        self.play(FadeOut(scan_rect), run_time=0.15)
+        
+        self.play(
+            LaggedStartMap(FadeIn, output_image, lag_ratio=0.0003),
+            Write(output_label),
+            run_time=0.8
+        )
+        self.wait(1)
+        
+        # ==========================================
+        # LOOP REMAINING FILTERS
+        # ==========================================
+        
+        for idx in range(1, len(filters_info)):
+            filt = filters_info[idx]
+            
+            # Create new elements with same base sizes
+            new_filter_name = Text(filt["name"], font_size=56, weight=BOLD).set_color(filt["color"])
+            new_filter_name.move_to(filter_name)
+            
+            new_kernel_grid = create_kernel_grid(filt["kernel"], filt["color"], use_fractions=filt["use_fractions"])
+            new_kernel_grid.move_to(kernel_grid)
+            
+            new_kernel_label = Text("Kernel", font_size=45, weight=BOLD).set_color(filt["color"]).shift(UP*0.52)
+            new_kernel_label.next_to(new_kernel_grid, UP, buff=0.2).move_to(kernel_label)
+            
+            new_filtered_rgb = apply_filter_rgb(image_rgb, filt["kernel"])
+            new_output_image = create_pixel_image(new_filtered_rgb, cell_size, output_pos_center)
+            
+            new_output_label = Text("Result", font_size=44, weight=BOLD).set_color(filt["color"]).move_to(output_label)
+            
+            self.play(
+                Transform(filter_name, new_filter_name),
+                Transform(kernel_grid, new_kernel_grid),
+                Transform(kernel_label, new_kernel_label),
+                run_time=0.5
+            )
+            
+            # Scan
+            scan_rect = Rectangle(width=3 * cell_size, height=3 * cell_size)
+            scan_rect.set_fill(filt["color"], opacity=0.4)
+            scan_rect.set_stroke(filt["color"], width=3)
+            scan_rect.move_to(original_pos_center + UP * (img_size/2 - 1.5) * cell_size + LEFT * (img_size/2 - 1.5) * cell_size)
+            scan_rect.set_z_index(5)
+            
+            self.play(FadeIn(scan_rect), run_time=0.15)
+            for pos in scan_positions:
+                self.play(scan_rect.animate.move_to(pos), run_time=0.115, rate_func=linear)
+            self.play(FadeOut(scan_rect), run_time=0.1)
+
+            new_output_image.move_to(output_image)
+            
+            self.play(
+                Transform(output_image, new_output_image),
+                Transform(output_label, new_output_label),
+                run_time=0.6
+            )
+            self.wait(1)
+        
+        self.wait(1)
+        
+        # ==========================================
+        # FINAL COMPARISON
+        # ==========================================
+        
+        comparison_title = Text("All Filters Comparison", font_size=38, weight=BOLD).set_color(WHITE).to_edge(UP, buff=0.35)
+        
+        self.play(
+            FadeOut(original_image), FadeOut(original_label),
+            FadeOut(kernel_grid), FadeOut(kernel_label), FadeOut(filter_name),
+            FadeOut(output_image), FadeOut(output_label),
+            run_time=0.7
+        )
+        
+        small_cell = 0.055
+        positions = [
+            LEFT * 4.5 + UP * 0.6,
+            LEFT * 0.0 + UP * 0.6,
+            RIGHT * 4.5 + UP * 0.6,
+            LEFT * 4.5 + DOWN * 2.4,
+            LEFT * 0.0 + DOWN * 2.4,
+            RIGHT * 4.5 + DOWN * 2.4,
+        ]
+        
+        all_images_data = [("Original", image_rgb, WHITE)]
+        for filt in filters_info:
+            filtered = apply_filter_rgb(image_rgb, filt["kernel"])
+            all_images_data.append((filt["name"], filtered, filt["color"]))
+        
+        comparison_group = VGroup()
+        for i, (name, img_data, color) in enumerate(all_images_data):
+            if i >= len(positions): break
+            pos = positions[i]
+            img = create_pixel_image(img_data, small_cell, pos)
+            
+            label = Text(name, font_size=30, weight=BOLD).set_color(color).next_to(img, UP, buff=0.3)
+            group = VGroup(img, label)
+            comparison_group.add(group)
+
+        
+        self.play(LaggedStartMap(FadeIn, comparison_group, lag_ratio=0.1), self.camera.frame.animate.shift(DOWN*1.5 + RIGHT*1.1) , run_time=1.5)
+        self.wait(2)
