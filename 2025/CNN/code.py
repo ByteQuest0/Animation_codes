@@ -1,6 +1,227 @@
 from manimlib import *
 import numpy as np
 
+class KernelShowcase(Scene):
+    
+    def construct(self):
+        self.camera.frame.scale(0.85).shift(UP*0.76)
+        
+        # ==========================================
+        # Define all kernels
+        # ==========================================
+        
+        # Mean blur (box blur) 3x3
+        mean_kernel = np.ones((3, 3)) / 9
+        
+        # Gaussian blur 3x3
+        gaussian_kernel = np.array([
+            [1, 2, 1],
+            [2, 4, 2],
+            [1, 2, 1]
+        ], dtype=np.float64) / 16
+        
+        # Sharpen kernel
+        sharpen_kernel = np.array([
+            [0, -1, 0],
+            [-1, 5, -1],
+            [0, -1, 0]
+        ], dtype=np.float64)
+        
+        
+        # Sobel X (vertical edge)
+        sobel_x_kernel = np.array([
+            [-1, 0, 1],
+            [-2, 0, 2],
+            [-1, 0, 1]
+        ], dtype=np.float64)
+        
+        # ==========================================
+        # Helper to create kernel grid
+        # ==========================================
+        
+        def create_kernel_grid(kernel, color, k_cell_size=1.1, use_fractions=False):
+            """Create a VGroup representing the kernel"""
+            kernel_grid = VGroup()
+            
+            for i in range(3):
+                for j in range(3):
+                    cell = Square(side_length=k_cell_size)
+                    cell.set_fill(color, opacity=0.75)
+                    cell.set_stroke(WHITE, width=3)
+                    cell.move_to(
+                        RIGHT * (j - 1) * k_cell_size + 
+                        DOWN * (i - 1) * k_cell_size
+                    )
+                    
+                    val = kernel[i, j]
+                    
+                    if use_fractions:
+                        val_str = "1/9"
+                    elif abs(val - round(val)) < 0.001:
+                        val_str = str(int(round(val)))
+                    else:
+                        val_str = f"{val:.2f}"
+                    
+                    val_text = Text(val_str, font_size=28, weight=BOLD)
+                    val_text.set_color(WHITE)
+                    val_text.move_to(cell.get_center())
+                    
+                    kernel_grid.add(VGroup(cell, val_text))
+            
+            return kernel_grid
+        
+        def create_learnable_kernel(color, k_cell_size=1):
+            """Create kernel with f1, f2, ... f9 labels"""
+            kernel_grid = VGroup()
+            
+            labels = ["f_1", "f_2", "f_3", "f_4", "f_5", "f_6", "f_7", "f_8", "f_9"]
+            idx = 0
+            
+            for i in range(3):
+                for j in range(3):
+                    cell = Square(side_length=k_cell_size)
+                    cell.set_fill(color, opacity=1)
+                    cell.set_stroke(BLUE_E, width=3)
+                    cell.move_to(
+                        RIGHT * (j - 1) * k_cell_size + 
+                        DOWN * (i - 1) * k_cell_size
+                    )
+                    
+                    val_text = Tex(labels[idx], font_size=56).set_color(BLACK)
+                    val_text.move_to(cell.get_center())
+                    
+                    kernel_grid.add(VGroup(cell, val_text))
+                    idx += 1
+            
+            return kernel_grid
+        
+        # ==========================================
+        # Define filter info
+        # ==========================================
+        
+        filters_info = [
+            {
+                "name": "Mean Blur",
+                "kernel": mean_kernel,
+                "color": BLUE,
+                "use_fractions": True,
+            },
+            {
+                "name": "Gaussian Blur",
+                "kernel": gaussian_kernel,
+                "color": TEAL,
+                "use_fractions": False,
+            },
+            {
+                "name": "Sharpen",
+                "kernel": sharpen_kernel,
+                "color": ORANGE,
+                "use_fractions": False,
+            },
+
+            {
+                "name": "Sobel X",
+                "kernel": sobel_x_kernel,
+                "color": RED,
+                "use_fractions": False,
+            },
+        ]
+        
+        # ==========================================
+        # Show first kernel
+        # ==========================================
+        
+        first_filter = filters_info[0]
+        
+        # Title
+        title = Text(first_filter["name"], font_size=48, weight=BOLD)
+        title.set_color(first_filter["color"])
+        title.shift(UP * 2.7)
+        
+        # Kernel grid
+        kernel_grid = create_kernel_grid(
+            first_filter["kernel"], 
+            first_filter["color"], 
+            use_fractions=first_filter["use_fractions"]
+        )
+        
+        self.play(Write(title), run_time=0.7)
+        self.play(
+            LaggedStartMap(FadeIn, kernel_grid, lag_ratio=0.05),
+            run_time=0.8
+        )
+        
+        self.wait(1)
+        
+        # ==========================================
+        # Transform through all kernels
+        # ==========================================
+        
+        for idx in range(1, len(filters_info)):
+            filt = filters_info[idx]
+            
+            # New title
+            new_title = Text(filt["name"], font_size=48, weight=BOLD)
+            new_title.set_color(filt["color"])
+            new_title.shift(UP * 2.7)
+            
+            # New kernel
+            new_kernel_grid = create_kernel_grid(
+                filt["kernel"], 
+                filt["color"], 
+                use_fractions=filt["use_fractions"]
+            )
+            
+            # Transform
+            self.play(
+                Transform(title, new_title),
+                Transform(kernel_grid, new_kernel_grid),
+                run_time=0.8
+            )
+            
+            self.wait(1)
+        
+        self.wait(0.5)
+        
+        # ==========================================
+        # Transform to learnable parameters
+        # ==========================================
+        
+        # New title for learnable
+        learnable_title = Text("Learnable Filter", font_size=48, weight=BOLD)
+        learnable_title.set_color(YELLOW)
+        learnable_title.shift(UP * 2.7)
+        
+        # Learnable kernel
+        learnable_kernel = create_learnable_kernel(YELLOW)
+        
+        self.play(
+            Transform(title, learnable_title),
+            Transform(kernel_grid, learnable_kernel),
+            run_time=1
+        )
+        
+        self.wait(1.5)
+
+
+        # ==========================================
+        # Add explanation text
+        # ==========================================
+        
+        explanation = Text(
+            "These values are learned during backpropagation",
+            font_size=28
+        )
+        explanation.set_color(GREY_A)
+        explanation.shift(DOWN * 2.3)
+        
+
+        
+        self.play(Write(explanation), self.camera.frame.animate.shift(DOWN*0.66),run_time=0.8)
+        self.wait(0.5)
+        
+        self.wait(2)
+        
 
 class ConvolutionANDpadding(Scene):
     
