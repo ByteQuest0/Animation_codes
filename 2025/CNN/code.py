@@ -1943,3 +1943,671 @@ class Convolution_Over_Volume(Scene):
         
         self.wait(2)
 
+class EdgeDetection(Scene):
+    
+    def construct(self):
+
+        self.camera.frame.scale(1.05).shift(UP * 0.3)
+        self.camera.frame.shift(LEFT*1.6).scale(0.85)
+        
+        # ==========================================
+        # SETUP: Create input image with clear vertical edge (6x6)
+        # Left half = 60, Right half = 220
+        # ==========================================
+        
+        # Input with clear vertical edge (left 60, right 220)
+        input_values = np.array([
+            [60, 60, 60, 220, 220, 220],
+            [60, 60, 60, 220, 220, 220],
+            [60, 60, 60, 220, 220, 220],
+            [60, 60, 60, 220, 220, 220],
+            [60, 60, 60, 220, 220, 220],
+            [60, 60, 60, 220, 220, 220]
+        ])
+        
+        cell_size = 0.6
+        
+        # Create input grid
+        input_grid = VGroup()
+        input_cells = {}
+        input_texts = {}
+        
+        for i in range(6):
+            for j in range(6):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text(str(input_values[i, j]), font_size=18, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center())
+                
+                cell_group = VGroup(cell, value)
+                input_cells[(i, j)] = cell_group
+                input_texts[(i, j)] = value
+                input_grid.add(cell_group)
+        
+        input_grid.center()
+        input_grid.move_to(LEFT * 5)
+        
+        input_label = Text("Input", font_size=32, weight=BOLD)
+        input_label.next_to(input_grid, UP, buff=0.3)
+        
+        # ==========================================
+        # SETUP: Vertical edge detection kernel (3x3)
+        # ==========================================
+        
+        vertical_kernel = np.array([
+            [-1, 0, 1],
+            [-1, 0, 1],
+            [-1, 0, 1]
+        ])
+        
+        kernel_grid = VGroup()
+        kernel_cells = {}
+        kernel_texts = {}
+        
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(YELLOW, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                val = vertical_kernel[i, j]
+                value = Text(str(val), font_size=20, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center())
+                
+                cell_group = VGroup(cell, value)
+                kernel_cells[(i, j)] = cell_group
+                kernel_texts[(i, j)] = value
+                kernel_grid.add(cell_group)
+        
+        kernel_grid.center()
+        
+        # Position kernel using next_to from asterisk
+        asterisk = Tex(r"*", font_size=60)
+        asterisk.next_to(input_grid, RIGHT, buff=0.5)
+        kernel_grid.next_to(asterisk, RIGHT, buff=0.5)
+        kernel_grid.set_z_index(4)
+        
+        kernel_label = Text("Vertical\n Filter", font_size=26, weight=BOLD)
+        kernel_label.set_color(YELLOW)
+        kernel_label.next_to(kernel_grid, UP, buff=0.3)
+        
+        # ==========================================
+        # SETUP: Output grid (4x4)
+        # ==========================================
+        
+        output_grid = VGroup()
+        output_cells = {}
+        output_texts = {}
+        
+        for i in range(4):
+            for j in range(4):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text("?", font_size=20, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center())
+                
+                output_grid.add(cell)
+                output_cells[(i, j)] = cell
+                output_texts[(i, j)] = value
+        
+        output_grid.center()
+        
+        # Position equals and output using next_to
+        equals_sign = Tex(r"=", font_size=60)
+        equals_sign.next_to(kernel_grid, RIGHT, buff=0.5)
+        output_grid.next_to(equals_sign, RIGHT, buff=0.5)
+        
+        # Position question marks
+        for i in range(4):
+            for j in range(4):
+                output_texts[(i, j)].move_to(output_cells[(i, j)].get_center())
+        
+        output_label = Text("Output", font_size=32, weight=BOLD)
+        output_label.next_to(output_grid, UP, buff=0.3)
+        
+        # ==========================================
+        # PART 1: Show all elements
+        # ==========================================
+        
+        self.play(
+            LaggedStartMap(FadeIn, input_grid, lag_ratio=0.02),
+            Write(input_label),
+            run_time=1.2
+        )
+        
+        self.play(Write(asterisk), run_time=0.5)
+        
+        self.play(
+            LaggedStartMap(FadeIn, kernel_grid, lag_ratio=0.05),
+            Write(kernel_label),
+            run_time=1
+        )
+        
+        self.play(Write(equals_sign), run_time=0.5)
+        
+        question_marks = VGroup(*[output_texts[(i, j)] for i in range(4) for j in range(4)])
+        self.play(
+            LaggedStartMap(FadeIn, output_grid, lag_ratio=0.03),
+            LaggedStartMap(FadeIn, question_marks, lag_ratio=0.03),
+            Write(output_label),
+            run_time=1
+        )
+        
+        self.wait(1)
+
+        # ==========================================
+        # PART 2: Perform convolution
+        # ==========================================
+        
+        self.play(
+            FadeOut(asterisk), FadeOut(equals_sign), FadeOut(kernel_label),
+            run_time=0.5
+        )
+        
+        # Make kernel transparent
+        self.play(
+            *[kernel_cells[(i, j)][0].animate.set_fill(YELLOW, opacity=0.5)
+              for i in range(3) for j in range(3)],
+            run_time=0.4
+        )
+        
+        def compute_conv(input_vals, kernel_vals, row, col):
+            total = 0
+            for ki in range(3):
+                for kj in range(3):
+                    total += input_vals[row + ki, col + kj] * kernel_vals[ki, kj]
+            return total
+        
+        # Store output values for visualization
+        output_values = np.zeros((4, 4), dtype=int)
+        output_result_texts = {}
+        
+        for out_row in range(4):
+            for out_col in range(4):
+                # Move kernel
+                center_pos = input_cells[(out_row + 1, out_col + 1)][0].get_center()
+                
+                self.play(
+                    kernel_grid.animate.move_to(center_pos),
+                    run_time=0.3
+                )
+                
+                # Calculate value
+                conv_val = compute_conv(input_values, vertical_kernel, out_row, out_col)
+                output_values[out_row, out_col] = conv_val
+                
+                # Create result - plain white cell, black text
+                result_val = Text(str(conv_val), font_size=18, weight=BOLD)
+                result_val.set_color(BLACK)
+                result_val.move_to(output_cells[(out_row, out_col)].get_center())
+                
+                old_q = output_texts[(out_row, out_col)]
+                
+                self.play(
+                    TransformFromCopy(kernel_grid, result_val),
+                    FadeOut(old_q),
+                    run_time=0.3
+                )
+                
+                output_result_texts[(out_row, out_col)] = result_val
+                output_grid.add(result_val)
+        
+        self.wait(0.5)
+        
+        # Restore kernel opacity
+        self.play(
+            *[kernel_cells[(i, j)][0].animate.set_fill(YELLOW, opacity=1)
+              for i in range(3) for j in range(3)],
+            run_time=0.4
+        )
+        
+        # Move kernel back to next_to(asterisk, RIGHT, buff=0.5)
+        self.play(FadeIn(asterisk), run_time=0.3)
+        
+        # Calculate target position
+        kernel_target = asterisk.get_right() + RIGHT * 0.5 + RIGHT * kernel_grid.get_width() / 2
+        
+        self.play(
+            kernel_grid.animate.move_to(kernel_target),
+            run_time=0.6
+        )
+        
+        # Update kernel_label position
+        kernel_label.next_to(kernel_grid, UP, buff=0.3)
+        
+        self.play(
+            FadeIn(equals_sign), FadeIn(kernel_label),
+            run_time=0.5
+        )
+        
+        self.wait(1)
+
+        self.camera.frame.save_state()
+
+
+        # ==========================================
+        # PART 3: Show real grayscale images below
+        # ==========================================
+        
+        self.play(self.camera.frame.animate.shift(DOWN * 1.46).scale(1.15), run_time=1)
+        
+        # Create "Real Image" visualization below
+        real_label = Text("Actual Grayscale Images:", font_size=28, weight=BOLD)
+        real_label.set_color(BLUE)
+        real_label.move_to(DOWN * 2.8 + LEFT * 0.5)
+        
+        # Create small grayscale input image representation
+        small_cell = 0.35
+        
+        # Input image (grayscale) - use actual pixel values 60 and 220
+        real_input = VGroup()
+        for i in range(6):
+            for j in range(6):
+                cell = Square(side_length=small_cell)
+                brightness = input_values[i, j] / 255.0  # Use actual pixel value
+                cell.set_fill(interpolate_color(BLACK, WHITE, brightness), opacity=1)
+                cell.set_stroke(BLACK, width=0.5)
+                cell.move_to(RIGHT * j * small_cell + DOWN * i * small_cell)
+                real_input.add(cell)
+        real_input.center()
+        real_input.next_to(input_grid, DOWN, buff=0.67)
+        
+
+        # Filter visualization - YELLOW color for vertical filter
+        real_filter = VGroup()
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=small_cell)
+                val = vertical_kernel[i, j]
+                if val == -1:
+                    cell.set_fill(BLACK, opacity=1)
+                elif val == 0:
+                    cell.set_fill(GREY, opacity=1)
+                else:
+                    cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(YELLOW, width=2)
+                cell.move_to(RIGHT * j * small_cell + DOWN * i * small_cell)
+                real_filter.add(cell)
+        real_filter.center()
+        real_filter.next_to(kernel_grid, DOWN, buff=1).shift(DOWN*1.1).scale(1.4)
+        
+
+        # Output visualization (edge detected) - use GREY and WHITE (not black)
+        real_output = VGroup()
+        out_min = np.min(output_values)
+        out_max = np.max(output_values)
+        out_range = out_max - out_min if out_max != out_min else 1
+        
+        for i in range(4):
+            for j in range(4):
+                cell = Square(side_length=small_cell)
+                val = output_values[i, j]
+                # Normalize to 0-1 range, then map GREY to WHITE
+                normalized = (val - out_min) / out_range
+                cell.set_fill(interpolate_color(GREY, WHITE, normalized), opacity=1)
+                cell.set_stroke(BLACK, width=0.5)
+                cell.move_to(RIGHT * j * small_cell + DOWN * i * small_cell)
+                real_output.add(cell)
+        real_output.center()
+        real_output.next_to(output_grid, DOWN, buff=1.54).scale(1.34)
+        
+        real_output_label = Text("Edge Detected", font_size=27, weight=BOLD)
+        real_output_label.set_color(GREEN)
+        real_output_label.next_to(real_output, UP, buff=0.2)
+        
+
+        self.play(
+            FadeIn(real_input),
+            run_time=0.8
+        )
+        self.play(
+            FadeIn(real_filter), 
+            run_time=0.8
+        )
+        self.play(
+            FadeIn(real_output), Write(real_output_label),
+            run_time=0.8
+        )
+
+        self.wait(2)
+
+
+        # ==========================================
+        # PART 4: Transition to Horizontal Edge Detection
+        # ==========================================
+        
+        transition_text = Text("Now: Horizontal Edge Detection", font_size=36, weight=BOLD)
+        transition_text.set_color(ORANGE)
+        transition_text.move_to(UP * 0.5)
+        
+        # Fade out current scene
+        self.play(
+            FadeOut(input_grid), FadeOut(input_label),
+            FadeOut(kernel_grid), FadeOut(kernel_label),
+            FadeOut(output_grid), FadeOut(output_label),
+            FadeOut(asterisk), FadeOut(equals_sign),
+            FadeOut(real_input), 
+            FadeOut(real_filter), 
+            FadeOut(real_output), FadeOut(real_output_label),
+            run_time=1
+        )
+        
+        transition_text.shift(LEFT*1.44)
+        self.play(Write(transition_text), run_time=1)
+        self.wait(1)
+  
+
+        # ==========================================
+        # PART 5: Create Horizontal Edge Input (top 60, bottom 220)
+        # ==========================================
+        
+        horiz_input_values = np.array([
+            [60, 60, 60, 60, 60, 60],
+            [60, 60, 60, 60, 60, 60],
+            [60, 60, 60, 60, 60, 60],
+            [220, 220, 220, 220, 220, 220],
+            [220, 220, 220, 220, 220, 220],
+            [220, 220, 220, 220, 220, 220]
+        ])
+        
+        # Create new input grid
+        horiz_input_grid = VGroup()
+        horiz_input_cells = {}
+        horiz_input_texts = {}
+        
+        for i in range(6):
+            for j in range(6):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text(str(horiz_input_values[i, j]), font_size=18, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center())
+                
+                cell_group = VGroup(cell, value)
+                horiz_input_cells[(i, j)] = cell_group
+                horiz_input_texts[(i, j)] = value
+                horiz_input_grid.add(cell_group)
+        
+        horiz_input_grid.center()
+        horiz_input_grid.move_to(LEFT * 5)
+        
+        horiz_input_label = Text("Input", font_size=32, weight=BOLD)
+        horiz_input_label.next_to(horiz_input_grid, UP, buff=0.3)
+        
+        # Horizontal kernel
+        horizontal_kernel = np.array([
+            [-1, -1, -1],
+            [0, 0, 0],
+            [1, 1, 1]
+        ])
+        
+        horiz_kernel_grid = VGroup()
+        horiz_kernel_cells = {}
+        horiz_kernel_texts = {}
+        
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(ORANGE, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                val = horizontal_kernel[i, j]
+                value = Text(str(val), font_size=20, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center())
+                
+                cell_group = VGroup(cell, value)
+                horiz_kernel_cells[(i, j)] = cell_group
+                horiz_kernel_texts[(i, j)] = value
+                horiz_kernel_grid.add(cell_group)
+        
+        horiz_kernel_grid.center()
+        
+        # Position using next_to
+        asterisk2 = Tex(r"*", font_size=60)
+        asterisk2.next_to(horiz_input_grid, RIGHT, buff=0.5)
+        horiz_kernel_grid.next_to(asterisk2, RIGHT, buff=0.5)
+        horiz_kernel_grid.set_z_index(4)
+        
+        horiz_kernel_label = Text("Horizontal\n  Filter", font_size=26, weight=BOLD)
+        horiz_kernel_label.set_color(ORANGE)
+        horiz_kernel_label.next_to(horiz_kernel_grid, UP, buff=0.3)
+        
+        # New output grid
+        horiz_output_grid = VGroup()
+        horiz_output_cells = {}
+        horiz_output_texts = {}
+        
+        for i in range(4):
+            for j in range(4):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text("?", font_size=20, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center())
+                
+                horiz_output_grid.add(cell)
+                horiz_output_cells[(i, j)] = cell
+                horiz_output_texts[(i, j)] = value
+        
+        horiz_output_grid.center()
+        
+        # Position using next_to
+        equals_sign2 = Tex(r"=", font_size=60)
+        equals_sign2.next_to(horiz_kernel_grid, RIGHT, buff=0.5)
+        horiz_output_grid.next_to(equals_sign2, RIGHT, buff=0.5)
+        
+        for i in range(4):
+            for j in range(4):
+                horiz_output_texts[(i, j)].move_to(horiz_output_cells[(i, j)].get_center())
+        
+        horiz_output_label = Text("Output", font_size=32, weight=BOLD)
+        horiz_output_label.next_to(horiz_output_grid, UP, buff=0.3)
+        
+        # Show all
+        self.play(
+            LaggedStartMap(FadeIn, horiz_input_grid, lag_ratio=0.02),
+            Write(horiz_input_label),
+            FadeOut(transition_text),self.camera.frame.animate.shift(UP * 1.65).scale(1/1.15) ,
+            run_time=1
+        )
+        
+        self.play(Write(asterisk2), run_time=0.4)
+        
+        self.play(
+            LaggedStartMap(FadeIn, horiz_kernel_grid, lag_ratio=0.05),
+            Write(horiz_kernel_label),
+            run_time=0.8
+        )
+        
+        self.play(Write(equals_sign2), run_time=0.4)
+        
+        horiz_questions = VGroup(*[horiz_output_texts[(i, j)] for i in range(4) for j in range(4)])
+        self.play(
+            LaggedStartMap(FadeIn, horiz_output_grid, lag_ratio=0.03),
+            LaggedStartMap(FadeIn, horiz_questions, lag_ratio=0.03),
+            Write(horiz_output_label),
+            run_time=0.8
+        )
+        
+        self.wait(1)
+
+        # ==========================================
+        # PART 6: Perform horizontal convolution
+        # ==========================================
+        
+        self.play(
+            FadeOut(asterisk2), FadeOut(equals_sign2), FadeOut(horiz_kernel_label),
+            run_time=0.4
+        )
+        
+        self.play(
+            *[horiz_kernel_cells[(i, j)][0].animate.set_fill(ORANGE, opacity=0.5)
+              for i in range(3) for j in range(3)],
+            run_time=0.3
+        )
+        
+        horiz_output_values = np.zeros((4, 4), dtype=int)
+        horiz_output_result_texts = {}
+        
+        for out_row in range(4):
+            for out_col in range(4):
+                center_pos = horiz_input_cells[(out_row + 1, out_col + 1)][0].get_center()
+                
+                self.play(
+                    horiz_kernel_grid.animate.move_to(center_pos),
+                    run_time=0.25
+                )
+                
+                conv_val = compute_conv(horiz_input_values, horizontal_kernel, out_row, out_col)
+                horiz_output_values[out_row, out_col] = conv_val
+                
+                result_val = Text(str(conv_val), font_size=18, weight=BOLD)
+                result_val.set_color(BLACK)
+                result_val.move_to(horiz_output_cells[(out_row, out_col)].get_center())
+                
+                old_q = horiz_output_texts[(out_row, out_col)]
+                
+                self.play(
+                    TransformFromCopy(horiz_kernel_grid, result_val),
+                    FadeOut(old_q),
+                    run_time=0.25
+                )
+                
+                horiz_output_result_texts[(out_row, out_col)] = result_val
+                horiz_output_grid.add(result_val)
+        
+        self.wait(0.5)
+        
+        # Restore kernel opacity
+        self.play(
+            *[horiz_kernel_cells[(i, j)][0].animate.set_fill(ORANGE, opacity=1)
+              for i in range(3) for j in range(3)],
+            run_time=0.4
+        )
+        
+        # Move kernel back to next_to(asterisk2, RIGHT, buff=0.5)
+        self.play(FadeIn(asterisk2), run_time=0.3)
+        
+        # Calculate target position
+        horiz_kernel_target = asterisk2.get_right() + RIGHT * 0.5 + RIGHT * horiz_kernel_grid.get_width() / 2
+        
+        self.play(
+            horiz_kernel_grid.animate.move_to(horiz_kernel_target),
+            run_time=0.5
+        )
+        
+        # Update kernel_label position
+        horiz_kernel_label.next_to(horiz_kernel_grid, UP, buff=0.3)
+        
+        self.play(
+            FadeIn(equals_sign2), FadeIn(horiz_kernel_label),
+            run_time=0.4
+        )
+        
+        self.wait(1)
+
+        self.camera.frame.save_state()
+        
+        # ==========================================
+        # PART 7: Show real grayscale images for horizontal
+        # ==========================================
+        
+        self.play(self.camera.frame.animate.shift(DOWN * 1.5).scale(1.15), run_time=0.8)
+        
+        real_label2 = Text("Actual Grayscale Images:", font_size=28, weight=BOLD)
+        real_label2.set_color(BLUE)
+        real_label2.move_to(DOWN * 2.8 + LEFT * 0.5)
+        
+        small_cell = 0.35
+        
+        # Input image - use actual pixel values (60 and 220 mapped to 0-255)
+        horiz_real_input = VGroup()
+        for i in range(6):
+            for j in range(6):
+                cell = Square(side_length=small_cell)
+                brightness = horiz_input_values[i, j] / 255.0  # Use actual pixel value
+                cell.set_fill(interpolate_color(BLACK, WHITE, brightness), opacity=1)
+                cell.set_stroke(BLACK, width=0.5)
+                cell.move_to(RIGHT * j * small_cell + DOWN * i * small_cell)
+                horiz_real_input.add(cell)
+        horiz_real_input.center()
+        horiz_real_input.next_to(input_grid, DOWN, buff=0.77)
+        
+        
+        # Filter - ORANGE stroke for horizontal filter
+        horiz_real_filter = VGroup()
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=small_cell)
+                val = horizontal_kernel[i, j]
+                if val == -1:
+                    cell.set_fill(BLACK, opacity=1)
+                elif val == 0:
+                    cell.set_fill(GREY, opacity=1)
+                else:
+                    cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(ORANGE, width=2)
+                cell.move_to(RIGHT * j * small_cell + DOWN * i * small_cell)
+                horiz_real_filter.add(cell)
+        horiz_real_filter.center()
+        horiz_real_filter.next_to(horiz_kernel_grid, DOWN, buff=1).shift(DOWN).scale(1.4)
+        
+        # Output - use GREY and WHITE (not black)
+        horiz_real_output = VGroup()
+        horiz_out_min = np.min(horiz_output_values)
+        horiz_out_max = np.max(horiz_output_values)
+        horiz_out_range = horiz_out_max - horiz_out_min if horiz_out_max != horiz_out_min else 1
+        
+        for i in range(4):
+            for j in range(4):
+                cell = Square(side_length=small_cell)
+                val = horiz_output_values[i, j]
+                # Map GREY to WHITE
+                normalized = (val - horiz_out_min) / horiz_out_range
+                cell.set_fill(interpolate_color(GREY, WHITE, normalized), opacity=1)
+                cell.set_stroke(BLACK, width=0.5)
+                cell.move_to(RIGHT * j * small_cell + DOWN * i * small_cell)
+                horiz_real_output.add(cell)
+        horiz_real_output.center()
+        horiz_real_output.next_to(horiz_output_grid, DOWN, buff=1).shift(DOWN*0.4).scale(1.23)
+        
+        horiz_real_output_label = Text("Edge Detected", font_size=26, weight=BOLD)
+        horiz_real_output_label.set_color(GREEN)
+        horiz_real_output_label.next_to(horiz_real_output, UP, buff=0.2)
+        
+
+        self.play(
+            FadeIn(horiz_real_input), 
+            run_time=0.6
+        )
+        horiz_real_filter.shift(DOWN*0.1).scale(1.1)
+        self.play(
+            FadeIn(horiz_real_filter), 
+            run_time=0.6
+        )
+        horiz_real_output.shift(DOWN*0.1).scale(1.12).shift(DOWN*0.14)
+        self.play(
+            FadeIn(horiz_real_output), Write(horiz_real_output_label),
+            run_time=0.6
+        )
+        
+
+        self.wait(3)
