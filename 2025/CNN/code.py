@@ -1,6 +1,441 @@
 from manimlib import *
 import numpy as np
 
+class Pooling(Scene):
+    
+    def construct(self):
+        self.camera.frame.scale(1.0).shift(UP * 0.3)
+        
+        # ==========================================
+        # Title
+        # ==========================================
+        
+        title = Text("Pooling Layers", font_size=48, weight=BOLD)
+        title.set_color(BLUE)
+        title.to_edge(UP, buff=0.5)
+        
+        self.play(Write(title), run_time=1)
+        self.wait(1)
+        self.play(FadeOut(title), run_time=0.5)
+        
+        # ==========================================
+        # PART 1: MAX POOLING
+        # ==========================================
+        
+        max_title = Text("Max Pooling", font_size=42, weight=BOLD)
+        max_title.set_color(RED)
+        max_title.to_edge(UP, buff=0.4)
+        
+        self.play(Write(max_title), run_time=0.8)
+        
+        # Create input grid (4x4)
+        input_values = np.array([
+            [1, 3, 2, 1],
+            [4, 6, 5, 2],
+            [7, 8, 1, 0],
+            [2, 3, 4, 5]
+        ])
+        
+        cell_size = 0.8
+        
+        input_grid = VGroup()
+        input_cells = {}
+        input_texts = {}
+        
+        for i in range(4):
+            for j in range(4):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text(str(input_values[i, j]), font_size=24, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center())
+                
+                cell_group = VGroup(cell, value)
+                input_cells[(i, j)] = cell_group
+                input_texts[(i, j)] = value
+                input_grid.add(cell_group)
+        
+        input_grid.center()
+        input_grid.move_to(LEFT * 3.5)
+        
+        input_label = Text("Input (4×4)", font_size=28, weight=BOLD)
+        input_label.next_to(input_grid, UP, buff=0.4)
+        
+        # Pool size and stride info
+        pool_info = Text("Pool Size: 2×2, Stride: 2", font_size=29)
+        pool_info.set_color(YELLOW)
+        pool_info.next_to(input_grid, DOWN, buff=0.4)
+        
+        # Create output grid (2x2)
+        output_grid = VGroup()
+        output_cells = {}
+        output_texts = {}
+        
+        for i in range(2):
+            for j in range(2):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text("?", font_size=24, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center())
+                
+                output_grid.add(cell)
+                output_cells[(i, j)] = cell
+                output_texts[(i, j)] = value
+        
+        output_grid.center()
+        output_grid.move_to(RIGHT * 3.5)
+        
+        for i in range(2):
+            for j in range(2):
+                output_texts[(i, j)].move_to(output_cells[(i, j)].get_center())
+        
+        output_label = Text("Output (2×2)", font_size=28, weight=BOLD)
+        output_label.next_to(output_grid, UP, buff=0.4)
+        
+        # Arrow
+        arrow = Arrow(input_grid.get_right(), output_grid.get_left(), buff=0.5)
+        arrow_label = Text("Max", font_size=39, weight=BOLD)
+        arrow_label.set_color(RED)
+        arrow_label.next_to(arrow, UP, buff=0.1)
+        
+        # Show elements
+        self.play(
+            LaggedStartMap(FadeIn, input_grid, lag_ratio=0.03),
+            Write(input_label),
+            run_time=1
+        )
+        
+        self.play(Write(pool_info), run_time=0.5)
+        
+        self.play(GrowArrow(arrow), Write(arrow_label), run_time=0.5)
+        
+        question_marks = VGroup(*[output_texts[(i, j)] for i in range(2) for j in range(2)])
+        self.play(
+            LaggedStartMap(FadeIn, output_grid, lag_ratio=0.05),
+            LaggedStartMap(FadeIn, question_marks, lag_ratio=0.05),
+            Write(output_label),
+            run_time=0.8
+        )
+        
+        self.wait(1)
+        
+        # Create pooling window (2x2 highlight)
+        pool_window = VGroup()
+        for i in range(2):
+            for j in range(2):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(RED, opacity=0.3)
+                cell.set_stroke(RED, width=4)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                pool_window.add(cell)
+        pool_window.move_to(input_cells[(0, 0)][0].get_center() + RIGHT * cell_size/2 + DOWN * cell_size/2)
+        pool_window.set_z_index(3)
+        
+        self.play(FadeIn(pool_window), run_time=0.5)
+        
+        # Perform max pooling
+        pool_positions = [(0, 0), (0, 2), (2, 0), (2, 2)]  # Top-left of each 2x2 region
+        output_positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
+        
+        for idx, (pi, pj) in enumerate(pool_positions):
+            # Move window
+            target_pos = input_cells[(pi, pj)][0].get_center() + RIGHT * cell_size/2 + DOWN * cell_size/2
+            
+            if idx > 0:
+                self.play(pool_window.animate.move_to(target_pos), run_time=0.5)
+            
+            # Get max value from 2x2 region
+            region_values = [input_values[pi + di, pj + dj] for di in range(2) for dj in range(2)]
+            max_val = max(region_values)
+            
+            # Highlight the max value cell
+            max_idx = region_values.index(max_val)
+            max_di, max_dj = max_idx // 2, max_idx % 2
+            max_cell = input_cells[(pi + max_di, pj + max_dj)][0]
+            
+            self.play(max_cell.animate.set_fill(RED, opacity=0.5), run_time=0.3)
+            
+            # Create result
+            oi, oj = output_positions[idx]
+            result_val = Text(str(max_val), font_size=24, weight=BOLD)
+            result_val.set_color(BLACK)
+            result_val.move_to(output_cells[(oi, oj)].get_center())
+            
+            old_q = output_texts[(oi, oj)]
+            
+            self.play(
+                TransformFromCopy(input_texts[(pi + max_di, pj + max_dj)], result_val),
+                FadeOut(old_q),
+                run_time=0.5
+            )
+            
+            # Reset highlight
+            self.play(max_cell.animate.set_fill(WHITE, opacity=1), run_time=0.2)
+            
+            output_grid.add(result_val)
+        
+        self.play(FadeOut(pool_window), run_time=0.3)
+        
+        self.wait(1)
+        
+        # ==========================================
+        # PART 2: AVERAGE POOLING
+        # ==========================================
+        
+        # Fade out max pooling
+        self.play(
+            FadeOut(input_grid), FadeOut(input_label),
+            FadeOut(output_grid), FadeOut(output_label),
+            FadeOut(arrow), FadeOut(arrow_label),
+            FadeOut(pool_info), FadeOut(max_title),
+            run_time=0.8
+        )
+        
+        avg_title = Text("Average Pooling", font_size=42, weight=BOLD)
+        avg_title.set_color(GREEN)
+        avg_title.to_edge(UP, buff=0.4)
+        
+        self.play(Write(avg_title), run_time=0.8)
+        
+        # Create new input grid (4x4)
+        avg_input_values = np.array([
+            [2, 4, 6, 8],
+            [1, 3, 5, 7],
+            [8, 6, 4, 2],
+            [7, 5, 3, 1]
+        ])
+        
+        avg_input_grid = VGroup()
+        avg_input_cells = {}
+        avg_input_texts = {}
+        
+        for i in range(4):
+            for j in range(4):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text(str(avg_input_values[i, j]), font_size=24, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center())
+                
+                cell_group = VGroup(cell, value)
+                avg_input_cells[(i, j)] = cell_group
+                avg_input_texts[(i, j)] = value
+                avg_input_grid.add(cell_group)
+        
+        avg_input_grid.center()
+        avg_input_grid.move_to(LEFT * 3.5)
+        
+        avg_input_label = Text("Input (4×4)", font_size=28, weight=BOLD)
+        avg_input_label.next_to(avg_input_grid, UP, buff=0.3)
+        
+        avg_pool_info = Text("Pool Size: 2×2, Stride: 2", font_size=29)
+        avg_pool_info.set_color(YELLOW)
+        avg_pool_info.next_to(avg_input_grid, DOWN, buff=0.4)
+        
+        # Create output grid (2x2)
+        avg_output_grid = VGroup()
+        avg_output_cells = {}
+        avg_output_texts = {}
+        
+        for i in range(2):
+            for j in range(2):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(WHITE, opacity=1)
+                cell.set_stroke(BLACK, width=2)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                
+                value = Text("?", font_size=24, weight=BOLD)
+                value.set_color(BLACK)
+                value.move_to(cell.get_center())
+                
+                avg_output_grid.add(cell)
+                avg_output_cells[(i, j)] = cell
+                avg_output_texts[(i, j)] = value
+        
+        avg_output_grid.center()
+        avg_output_grid.move_to(RIGHT * 3.5)
+        
+        for i in range(2):
+            for j in range(2):
+                avg_output_texts[(i, j)].move_to(avg_output_cells[(i, j)].get_center())
+        
+        avg_output_label = Text("Output (2×2)", font_size=28, weight=BOLD)
+        avg_output_label.next_to(avg_output_grid, UP, buff=0.3)
+        
+        # Arrow
+        avg_arrow = Arrow(avg_input_grid.get_right(), avg_output_grid.get_left(), buff=0.5)
+        avg_arrow_label = Text("Avg", font_size=39, weight=BOLD)
+        avg_arrow_label.set_color(GREEN)
+        avg_arrow_label.next_to(avg_arrow, UP, buff=0.1)
+        
+        # Show elements
+        self.play(
+            LaggedStartMap(FadeIn, avg_input_grid, lag_ratio=0.03),
+            Write(avg_input_label),
+            run_time=1
+        )
+        
+        self.play(Write(avg_pool_info), run_time=0.5)
+        
+        self.play(GrowArrow(avg_arrow), Write(avg_arrow_label), run_time=0.5)
+        
+        avg_question_marks = VGroup(*[avg_output_texts[(i, j)] for i in range(2) for j in range(2)])
+        self.play(
+            LaggedStartMap(FadeIn, avg_output_grid, lag_ratio=0.05),
+            LaggedStartMap(FadeIn, avg_question_marks, lag_ratio=0.05),
+            Write(avg_output_label),
+            run_time=0.8
+        )
+        
+        self.wait(1)
+        
+        # Create pooling window (2x2 highlight) - GREEN for average
+        avg_pool_window = VGroup()
+        for i in range(2):
+            for j in range(2):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(GREEN, opacity=0.3)
+                cell.set_stroke(GREEN, width=4)
+                cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                avg_pool_window.add(cell)
+        avg_pool_window.move_to(avg_input_cells[(0, 0)][0].get_center() + RIGHT * cell_size/2 + DOWN * cell_size/2)
+        avg_pool_window.set_z_index(3)
+        
+        self.play(FadeIn(avg_pool_window), run_time=0.5)
+        
+        # Perform average pooling
+        for idx, (pi, pj) in enumerate(pool_positions):
+            # Move window
+            target_pos = avg_input_cells[(pi, pj)][0].get_center() + RIGHT * cell_size/2 + DOWN * cell_size/2
+            
+            if idx > 0:
+                self.play(avg_pool_window.animate.move_to(target_pos), run_time=0.5)
+            
+            # Get average value from 2x2 region
+            region_values = [avg_input_values[pi + di, pj + dj] for di in range(2) for dj in range(2)]
+            avg_val = sum(region_values) / 4
+            
+            # Highlight all cells in region
+            highlight_anims = []
+            for di in range(2):
+                for dj in range(2):
+                    highlight_anims.append(
+                        avg_input_cells[(pi + di, pj + dj)][0].animate.set_fill(GREEN, opacity=0.5)
+                    )
+            self.play(*highlight_anims, run_time=0.3)
+            
+            # Create result
+            oi, oj = output_positions[idx]
+            # Format as integer if whole number, else one decimal
+            if avg_val == int(avg_val):
+                result_str = str(int(avg_val))
+            else:
+                result_str = f"{avg_val:.1f}"
+            
+            result_val = Text(result_str, font_size=22, weight=BOLD)
+            result_val.set_color(BLACK)
+            result_val.move_to(avg_output_cells[(oi, oj)].get_center())
+            
+            old_q = avg_output_texts[(oi, oj)]
+            
+            self.play(
+                TransformFromCopy(avg_pool_window, result_val),
+                FadeOut(old_q),
+                run_time=0.5
+            )
+            
+            # Reset highlight
+            reset_anims = []
+            for di in range(2):
+                for dj in range(2):
+                    reset_anims.append(
+                        avg_input_cells[(pi + di, pj + dj)][0].animate.set_fill(WHITE, opacity=1)
+                    )
+            self.play(*reset_anims, run_time=0.2)
+            
+            avg_output_grid.add(result_val)
+        
+        self.play(FadeOut(avg_pool_window), run_time=0.3)
+        
+        self.wait(1)
+        
+        # ==========================================
+        # PART 3: FORMULA (simplified)
+        # ==========================================
+        
+        # Fade out average pooling
+        self.play(
+            FadeOut(avg_input_grid), FadeOut(avg_input_label),
+            FadeOut(avg_output_grid), FadeOut(avg_output_label),
+            FadeOut(avg_arrow), FadeOut(avg_arrow_label),
+            FadeOut(avg_pool_info), FadeOut(avg_title),
+            run_time=0.8
+        )
+        
+        formula_title = Text("Output Size Formula", font_size=62, weight=BOLD)
+        formula_title.set_color(BLUE)
+        formula_title.to_edge(UP, buff=0.5).shift(DOWN*0.18)
+        
+        self.play(Write(formula_title), run_time=0.8)
+        
+        self.wait(0.5)
+
+  
+        # Full formula with padding
+        formula_full = Tex(
+            r"Output\ = \left \lfloor \frac{n + 2P - f}{S} \right\rfloor + 1",
+            font_size=56
+        )
+        formula_full.move_to(ORIGIN).scale(1.4)
+        
+        self.play(Write(formula_full), run_time=1.5)
+        
+        self.wait(1.5)
+        
+        # Note about padding being rare
+        padding_note = Text("Padding is rarely used in pooling...", font_size=33)
+        padding_note.set_color(YELLOW)
+        padding_note.next_to(formula_full, DOWN, buff=1.04)
+        
+        self.play(Write(padding_note), run_time=1)
+        
+        self.wait(2)
+        
+        # Simplified formula without padding (P=0)
+        formula_simple = Tex(
+            r"Output = \left\lfloor \frac{n - f}{S} \right\rfloor + 1",
+            font_size=56
+        )
+        formula_simple.move_to(ORIGIN).scale(1.55)
+        
+        self.play(
+            FadeOut(padding_note),
+            run_time=0.5
+        )
+        
+        self.play(
+            Transform(formula_full, formula_simple),
+            self.camera.frame.animate.shift(UP*0.55),
+            run_time=1.2
+        )
+        
+        # Highlight the simplified formula
+        box = SurroundingRectangle(formula_full, color=YELLOW, stroke_width=6, ).scale(1.1)
+        self.play(ShowCreation(box), run_time=0.5)
+        
+        self.wait(3)
+
+
 class KernelShowcase(Scene):
     
     def construct(self):
