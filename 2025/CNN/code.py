@@ -3633,3 +3633,396 @@ class ImageFilters(Scene):
         
         self.play(LaggedStartMap(FadeIn, comparison_group, lag_ratio=0.1), self.camera.frame.animate.shift(DOWN*1.5 + RIGHT*1.1) , run_time=1.5)
         self.wait(2)
+
+
+class ConvLayer(Scene):
+    
+    def construct(self):
+        self.camera.frame.scale(1.15)
+
+        self.camera.frame.scale(0.9*0.9*0.95).shift(LEFT*1.32)
+        
+        cell_size = 0.35
+        depth_offset = 0.18
+        
+        # ==========================================
+        # Helper functions
+        # ==========================================
+        
+        def create_rgb_input():
+            red_layer = VGroup()
+            for i in range(6):
+                for j in range(6):
+                    cell = Square(side_length=cell_size)
+                    cell.set_fill(RED, opacity=0.9)
+                    cell.set_stroke("#ff0000", width=1.5)
+                    x_pos = j * cell_size + (2 - 0) * depth_offset
+                    y_pos = -i * cell_size + (2 - 0) * depth_offset
+                    cell.move_to(RIGHT * x_pos + UP * y_pos)
+                    red_layer.add(cell)
+            
+            green_layer = VGroup()
+            for i in range(6):
+                for j in range(6):
+                    cell = Square(side_length=cell_size)
+                    cell.set_fill(GREEN, opacity=0.9)
+                    cell.set_stroke("#00ff00", width=1.5)
+                    x_pos = j * cell_size + (2 - 1) * depth_offset
+                    y_pos = -i * cell_size + (2 - 1) * depth_offset
+                    cell.move_to(RIGHT * x_pos + UP * y_pos)
+                    green_layer.add(cell)
+            
+            blue_layer = VGroup()
+            for i in range(6):
+                for j in range(6):
+                    cell = Square(side_length=cell_size)
+                    cell.set_fill(BLUE, opacity=0.9)
+                    cell.set_stroke("#0000ff", width=1.5)
+                    x_pos = j * cell_size + (2 - 2) * depth_offset
+                    y_pos = -i * cell_size + (2 - 2) * depth_offset
+                    cell.move_to(RIGHT * x_pos + UP * y_pos)
+                    blue_layer.add(cell)
+            
+            red_layer.set_z_index(3)
+            green_layer.set_z_index(2)
+            blue_layer.set_z_index(1)
+            
+            return VGroup(red_layer, green_layer, blue_layer)
+        
+        def create_3d_filter(color, stroke_color):
+            filter_layers = VGroup()
+            for layer_idx in range(3):
+                layer = VGroup()
+                for i in range(3):
+                    for j in range(3):
+                        cell = Square(side_length=cell_size)
+                        cell.set_fill(color, opacity=0.85)
+                        cell.set_stroke(stroke_color, width=2)
+                        x_pos = (j - 1) * cell_size + (2 - layer_idx) * depth_offset
+                        y_pos = -(i - 1) * cell_size + (2 - layer_idx) * depth_offset
+                        cell.move_to(RIGHT * x_pos + UP * y_pos)
+                        layer.add(cell)
+                layer.set_z_index(3.5 - layer_idx)
+                filter_layers.add(layer)
+            return filter_layers
+        
+        def create_output_grid(color, stroke_color, opacity=0.7):
+            grid = VGroup()
+            for i in range(4):
+                for j in range(4):
+                    cell = Square(side_length=cell_size)
+                    cell.set_fill(color, opacity=opacity)
+                    cell.set_stroke(stroke_color, width=2)
+                    cell.move_to(RIGHT * j * cell_size + DOWN * i * cell_size)
+                    grid.add(cell)
+            grid.center()
+            return grid
+        
+        def create_stacked_output(colors, stroke_colors, center_pos):
+            layers = VGroup()
+            for layer_idx, (color, stroke) in enumerate(zip(colors, stroke_colors)):
+                layer = VGroup()
+                for i in range(4):
+                    for j in range(4):
+                        cell = Square(side_length=cell_size)
+                        cell.set_fill(color, opacity=1)
+                        cell.set_stroke(stroke, width=2)
+                        x_pos = j * cell_size + (2 - layer_idx) * depth_offset
+                        y_pos = -i * cell_size + (2 - layer_idx) * depth_offset
+                        cell.move_to(center_pos + RIGHT * x_pos + UP * y_pos)
+                        layer.add(cell)
+                layer.set_z_index(3 - layer_idx)
+                layers.add(layer)
+            return layers
+        
+        # ==========================================
+        # PART 1: Show input volume
+        # ==========================================
+        
+        input_volume = create_rgb_input()
+        input_volume.center()
+        input_volume.move_to(LEFT * 5)
+        
+        input_label = Text("Input", font_size=26, weight=BOLD)
+        input_label.next_to(input_volume, UP, buff=0.5)
+        
+        self.play(
+            LaggedStartMap(FadeIn, input_volume[2], lag_ratio=0.01),
+            LaggedStartMap(FadeIn, input_volume[1], lag_ratio=0.01),
+            LaggedStartMap(FadeIn, input_volume[0], lag_ratio=0.01),
+            Write(input_label),
+            run_time=1.5
+        )
+        
+        self.wait(0.5)
+
+        
+        # ==========================================
+        # PART 2: Show three filters stacked vertically
+        # ==========================================
+        
+        filter1 = create_3d_filter(YELLOW, "#cccc00")
+        filter2 = create_3d_filter(ORANGE, "#cc6600")
+        filter3 = create_3d_filter(PURPLE, "#8800aa")
+        
+        filter1.move_to(LEFT * 1.5 + UP * 2.2)
+        filter2.move_to(LEFT * 1.5)
+        filter3.move_to(LEFT * 1.5 + DOWN * 2.2)
+        
+        f1_label = Tex(r"F_1", font_size=42).set_color(YELLOW).next_to(filter1, LEFT, buff=0.3)
+        f2_label = Tex(r"F_2", font_size=42).set_color(ORANGE).next_to(filter2, LEFT, buff=0.3)
+        f3_label = Tex(r"F_3", font_size=42).set_color(PURPLE).next_to(filter3, LEFT, buff=0.3)
+        
+        asterisk = Tex(r"*", font_size=48).move_to(LEFT * 3.2)
+        
+        self.play(Write(asterisk), run_time=0.3)
+        
+        self.play(
+            LaggedStartMap(FadeIn, filter1, lag_ratio=0.02),
+            LaggedStartMap(FadeIn, filter2, lag_ratio=0.02),
+            LaggedStartMap(FadeIn, filter3, lag_ratio=0.02),
+            Write(f1_label), Write(f2_label), Write(f3_label),
+            run_time=1.2
+        )
+        
+        self.wait(0.5)
+        
+        # ==========================================
+        # PART 3: Show ReLU( [output] + b ) for each filter
+        # ==========================================
+        
+        # Create output grids
+        out1 = create_output_grid(YELLOW, "#cccc00", opacity=0.6)
+        out2 = create_output_grid(ORANGE, "#cc6600", opacity=0.6)
+        out3 = create_output_grid(PURPLE, "#8800aa", opacity=0.6)
+        
+        out1.move_to(RIGHT * 2 + UP * 2.2)
+        out2.move_to(RIGHT * 2)
+        out3.move_to(RIGHT * 2 + DOWN * 2.2)
+        
+        # Create ReLU( [ ] + b ) formula structure for each
+        # ReLU( out + b1 )
+        
+        relu1 = Text("ReLU(", font_size=24, weight=BOLD).set_color("#00ff00")
+        plus1 = Tex(r"+", font_size=32)
+        b1 = Tex(r"b_1", font_size=32).set_color(YELLOW)
+        close1 = Text(")", font_size=24, weight=BOLD).set_color("#00ff00")
+        
+        relu2 = Text("ReLU(", font_size=24, weight=BOLD).set_color("#00ff00")
+        plus2 = Tex(r"+", font_size=32)
+        b2 = Tex(r"b_2", font_size=32).set_color(ORANGE)
+        close2 = Text(")", font_size=24, weight=BOLD).set_color("#00ff00")
+        
+        relu3 = Text("ReLU(", font_size=24, weight=BOLD).set_color("#00ff00")
+        plus3 = Tex(r"+", font_size=32)
+        b3 = Tex(r"b_3", font_size=32).set_color(PURPLE)
+        close3 = Text(")", font_size=24, weight=BOLD).set_color("#00ff00")
+        
+        # Position formula parts around output grids
+        relu1.next_to(out1, LEFT, buff=0.15)
+        plus1.next_to(out1, RIGHT, buff=0.15)
+        b1.next_to(plus1, RIGHT, buff=0.1)
+        close1.next_to(b1, RIGHT, buff=0.1)
+        
+        relu2.next_to(out2, LEFT, buff=0.15)
+        plus2.next_to(out2, RIGHT, buff=0.15)
+        b2.next_to(plus2, RIGHT, buff=0.1)
+        close2.next_to(b2, RIGHT, buff=0.1)
+        
+        relu3.next_to(out3, LEFT, buff=0.15)
+        plus3.next_to(out3, RIGHT, buff=0.15)
+        b3.next_to(plus3, RIGHT, buff=0.1)
+        close3.next_to(b3, RIGHT, buff=0.1)
+        
+        formula1 = VGroup(relu1, out1, plus1, b1, close1)
+        formula2 = VGroup(relu2, out2, plus2, b2, close2)
+        formula3 = VGroup(relu3, out3, plus3, b3, close3)
+        
+        # Arrows from filters to formulas
+        arrow1 = Arrow(filter1.get_right(), relu1.get_left(), buff=0.2, stroke_width=3)
+        arrow2 = Arrow(filter2.get_right(), relu2.get_left(), buff=0.2, stroke_width=3)
+        arrow3 = Arrow(filter3.get_right(), relu3.get_left(), buff=0.2, stroke_width=3)
+        
+        self.play(
+            GrowArrow(arrow1), GrowArrow(arrow2), GrowArrow(arrow3),
+            run_time=0.5
+        )
+
+        self.wait(2)
+
+        self.play(
+           FadeIn(out1),
+           FadeIn(out2),
+           FadeIn(out3),
+        )
+
+        self.wait(2)
+
+        self.play(
+           FadeIn(plus1),
+           FadeIn(plus2),
+           FadeIn(plus3),
+        )
+
+
+        self.play(
+           FadeIn(b1),
+           FadeIn(b2),
+           FadeIn(b3),
+        )
+
+        self.wait(2)
+   
+        # Show formulas
+        self.play(
+            Write(relu1), Write(close1),
+            Write(relu2), Write(close2),
+            Write(relu3), Write(close3),
+            run_time=1.5
+        )
+        
+        self.wait(1)
+
+        
+        # ==========================================
+        # PART 4: Transform entire formula into dark output
+        # ==========================================
+        
+        # Create darker output grids (after ReLU)
+        out1_dark = create_output_grid("#fbff24", YELLOW_D, opacity=1).set_z_index(2)
+        out2_dark = create_output_grid("#ff8000", "#884400", opacity=1)
+        out3_dark = create_output_grid("#9c08ff", PURPLE_D, opacity=1).set_z_index(1)
+        
+        out1_dark.move_to(RIGHT * 5.2 + UP * 2.2)
+        out2_dark.move_to(RIGHT * 5.2)
+        out3_dark.move_to(RIGHT * 5.2 + DOWN * 2.2)
+        
+        # Equals signs
+        eq1 = Tex(r"=", font_size=36).next_to(close1, RIGHT, buff=0.32)
+        eq2 = Tex(r"=", font_size=36).next_to(close2, RIGHT, buff=0.32)
+        eq3 = Tex(r"=", font_size=36).next_to(close3, RIGHT, buff=0.32)
+        
+        self.play(
+            Write(eq1), Write(eq2), Write(eq3),
+            run_time=0.3
+        )
+        self.camera.frame.save_state()
+        # Transform formula groups into dark outputs
+        self.play(
+            TransformFromCopy(formula1, out1_dark),
+            TransformFromCopy(formula2, out2_dark),
+            TransformFromCopy(formula3, out3_dark),
+            self.camera.frame.animate.shift(RIGHT*1.166).scale(1.114),
+            run_time=1.5
+        )
+        
+        self.wait(1.5)
+
+
+        self.play(
+            out3_dark.animate.move_to(out2_dark).shift(UP*0.12+RIGHT*0.12),
+            FadeOut(eq1),
+        )
+        self.play(
+            out1_dark.animate.move_to(out3_dark).shift(UP*0.12+RIGHT*0.12),
+            FadeOut(eq3),
+
+        )
+
+        self.wait(1.4)
+
+
+        rect1= SurroundingRectangle(Group(input_volume, input_label), stroke_width=5.8).scale(1.06)
+
+
+        self.wait(0.3)
+
+        a = Text("X").set_color(WHITE).scale(1.5).next_to(rect1, DOWN, buff=0.63)
+        self.play(Write(a))
+        self.wait(2)
+        
+        self.camera.frame.save_state()
+
+        self.play(self.camera.frame.animate.scale(1.08).shift(DOWN*0.7))
+
+        self.wait()
+
+        b = Text("W").set_color(WHITE).scale(1.5).next_to(filter3, DOWN, buff=0.63)
+        self.play(Write(b))
+        self.wait(2)  
+
+        c = Text("RelU(WX + b)").set_color(WHITE).scale(0.87).next_to(b, RIGHT, buff=1.3)
+
+        self.play(
+            ReplacementTransform(a, c[5]),
+            ReplacementTransform(b, c[6]),
+        )
+
+        self.wait(1)
+
+        self.play(FadeIn(c[7]))
+
+        self.play(TransformFromCopy(VGroup(b1,b2,b3), c[8]))
+        
+        self.wait(2)
+
+        self.play(FadeIn(c[:5]), FadeIn(c[-1]))
+        self.wait(2)
+
+        b = Tex("a^{(l)}").set_color(WHITE).scale(1.5).next_to(out2_dark, DOWN, buff=0.63)
+
+        self.play(ReplacementTransform(c,b))
+
+        self.wait(2)
+
+        self.play(FadeOut(b), self.camera.frame.animate.restore())
+        self.wait(2)
+
+        a = Text("6x6x3").next_to(input_volume, DOWN, buff=0.43).set_color(WHITE)
+        self.play(ShowCreation(a))
+        self.wait(2)
+
+        self.play(self.camera.frame.animate.shift(DOWN*0.5))
+
+        b = Text("3x3x3").next_to(filter3, DOWN, buff=0.43).set_color(WHITE).scale(0.8)
+        self.play(ShowCreation(b))
+        self.wait(2)    
+
+        c = Text("4x4x1").next_to(out3, DOWN, buff=0.43).set_color(WHITE).scale(0.8)
+        self.play(ShowCreation(c))
+        self.wait(2)    
+
+        d = Text("4x4x3").next_to(out3_dark, DOWN, buff=0.43).set_color(WHITE).scale(0.8)
+        self.play(ShowCreation(d))
+        self.wait(2)     
+
+
+
+        # Transform dimension labels to notation
+        a_new = Tex(r"n_H^{(l-1)} \times n_W^{(l-1)} \times n_c^{(l-1)}").scale(0.78).move_to(a).set_color(WHITE)
+        b_new = Tex(r"f^{(l)} \times f^{(l)} \times n_c^{(l-1)}").scale(0.96).move_to(b).set_color(WHITE).shift(DOWN*0.04)
+        c_new = Tex(r"n_H^{(l)} \times n_W^{(l)} \times 1").scale(0.96).move_to(c).set_color(WHITE).shift(DOWN*0.04)
+        d_new = Tex(r"n_H^{(l)} \times n_W^{(l)} \times n_c^{(l)}").scale(0.77).move_to(d).set_color(WHITE).shift(LEFT*0.07)
+
+        self.play(
+            Transform(a, a_new),
+            Transform(b, b_new),
+            Transform(c, c_new),
+            Transform(d, d_new),
+            run_time=1.5
+        )
+        
+        self.wait()
+
+        YELLOW_B = YELLOW_C
+
+        rect = SurroundingRectangle(a, color=YELLOW_B, stroke_width=3.8).scale(1.06)
+        self.play(ShowCreation(rect))
+        self.wait(2)
+
+        self.play(Transform(rect, SurroundingRectangle(b, color=YELLOW_B, stroke_width=3.8).scale(1.06)))
+        self.wait(2)
+        self.play(Transform(rect, SurroundingRectangle(c, color=YELLOW_B, stroke_width=3.8).scale(1.06)))
+        self.wait(2)
+        self.play(Transform(rect, SurroundingRectangle(d, color=YELLOW_B, stroke_width=3.8).scale(1.06)))
+        self.wait(2)
