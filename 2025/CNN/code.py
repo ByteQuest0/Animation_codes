@@ -1,5 +1,1093 @@
 from manimlib import *
 import numpy as np
+from PIL import Image, ImageFilter, ImageOps
+import os
+
+PURE_RED = "#FF0000"
+FEATURE_COLOR = "#DA1F1F"
+
+class FeatureExtraction_Explained(Scene):
+    
+    def construct(self):
+        
+        # ==========================================
+        # STEP 0: Generate feature images from cat.jpeg
+        # ==========================================
+        
+        img = Image.open("cat.jpeg")
+        img_gray = img.convert("L")  # Grayscale
+        
+        # 1. Edge detection
+        edges = img_gray.filter(ImageFilter.FIND_EDGES)
+        edges = ImageOps.autocontrast(edges)
+        edges.save("cat_edges.png")
+        
+        # 2. Textures (emboss filter)
+        texture = img_gray.filter(ImageFilter.EMBOSS)
+        texture = ImageOps.autocontrast(texture)
+        texture.save("cat_texture.png")
+        
+        # 3. Shapes/Parts (contour filter)
+        shapes = img_gray.filter(ImageFilter.CONTOUR)
+        shapes = ImageOps.invert(shapes)
+        shapes.save("cat_shapes.png")
+        
+        # 4. Contrast (edge enhance + sharpen)
+        contrast = img_gray.filter(ImageFilter.EDGE_ENHANCE_MORE)
+        contrast = ImageOps.autocontrast(contrast)
+        contrast.save("cat_contrast.png")
+        
+        # ==========================================
+        # PART 1: Show original cat image
+        # ==========================================
+        
+        cat_img = ImageMobject("cat.jpeg")
+        cat_img.set_height(4.5)
+        cat_img.move_to(LEFT * 4)
+        
+        cat_border = SurroundingRectangle(cat_img, color=WHITE, stroke_width=4, buff=0.05)
+        cat_label = Text("Original Image", font_size=32, weight=BOLD)
+        cat_label.next_to(cat_img, DOWN, buff=0.3)
+        
+        self.play(FadeIn(cat_img), ShowCreation(cat_border))
+        self.play(Write(cat_label))
+        self.wait(1)
+        
+        # ==========================================
+        # PART 2: Create all feature images on the right
+        # ==========================================
+        
+        # Colors for each feature
+        EDGE_COLOR = RED
+        TEXTURE_COLOR = GREEN
+        SHAPE_COLOR = BLUE
+        CONTRAST_COLOR = YELLOW
+        
+        # Feature 1: Edges (top-left)
+        edges_img = ImageMobject("cat_edges.png")
+        edges_img.set_height(2.0)
+        edges_img.move_to(RIGHT * 2 + UP * 2)
+        edges_border = SurroundingRectangle(edges_img, color=EDGE_COLOR, stroke_width=3, buff=0.05)
+        edges_label = Text("Edges", font_size=24, weight=BOLD).set_color(EDGE_COLOR)
+        edges_label.next_to(edges_img, DOWN, buff=0.15)
+        
+        # Feature 2: Textures (top-right)
+        texture_img = ImageMobject("cat_texture.png")
+        texture_img.set_height(2.0)
+        texture_img.move_to(RIGHT * 5.5 + UP * 2)
+        texture_border = SurroundingRectangle(texture_img, color=TEXTURE_COLOR, stroke_width=3, buff=0.05)
+        texture_label = Text("Textures", font_size=24, weight=BOLD).set_color(TEXTURE_COLOR)
+        texture_label.next_to(texture_img, DOWN, buff=0.15)
+        
+        # Feature 3: Shapes/Parts (bottom-left)
+        shapes_img = ImageMobject("cat_shapes.png")
+        shapes_img.set_height(2.0)
+        shapes_img.move_to(RIGHT * 2 + DOWN * 1.5)
+        shapes_border = SurroundingRectangle(shapes_img, color=SHAPE_COLOR, stroke_width=3, buff=0.05)
+        shapes_label = Text("Parts", font_size=24, weight=BOLD).set_color(SHAPE_COLOR)
+        shapes_label.next_to(shapes_img, DOWN, buff=0.15)
+        
+        # Feature 4: Contrast (bottom-right)
+        contrast_img = ImageMobject("cat_contrast.png")
+        contrast_img.set_height(2.0)
+        contrast_img.move_to(RIGHT * 5.5 + DOWN * 1.5)
+        contrast_border = SurroundingRectangle(contrast_img, color=CONTRAST_COLOR, stroke_width=3, buff=0.05)
+        contrast_label = Text("Contrast", font_size=24, weight=BOLD).set_color(CONTRAST_COLOR)
+        contrast_label.next_to(contrast_img, DOWN, buff=0.15)
+        
+        # ==========================================
+        # PART 3: Arrows and animations
+        # ==========================================
+        
+        # Arrow to Edges
+        arrow_edges = Arrow(
+            cat_border.get_right(),
+            edges_border.get_left(),
+            buff=0.15,
+            stroke_width=4
+        ).set_color(EDGE_COLOR).set_z_index(3)
+        
+        self.play(GrowArrow(arrow_edges))
+        self.play(
+            FadeIn(edges_img),
+            ShowCreation(edges_border),
+            Write(edges_label),
+            run_time=0.8
+        )
+        self.wait(0.3)
+        
+        # Arrow to Textures
+        arrow_texture = Arrow(
+            cat_border.get_right(),
+            texture_border.get_left(),
+            buff=0.15,
+            stroke_width=4
+        ).set_color(TEXTURE_COLOR).set_z_index(3)
+        
+        self.play(GrowArrow(arrow_texture))
+        self.play(
+            FadeIn(texture_img),
+            ShowCreation(texture_border),
+            Write(texture_label),
+            run_time=0.8
+        )
+        self.wait(0.3)
+        
+        # Arrow to Shapes/Parts
+        arrow_shapes = Arrow(
+            cat_border.get_right(),
+            shapes_border.get_left(),
+            buff=0.15,
+            stroke_width=4
+        ).set_color(SHAPE_COLOR).set_z_index(3)
+        
+        self.play(GrowArrow(arrow_shapes))
+        self.play(
+            FadeIn(shapes_img),
+            ShowCreation(shapes_border),
+            Write(shapes_label),
+            run_time=0.8
+        )
+        self.wait(0.3)
+        
+        # Arrow to Contrast
+        arrow_contrast = Arrow(
+            cat_border.get_right(),
+            contrast_border.get_left(),
+            buff=0.15,
+            stroke_width=4
+        ).set_color(CONTRAST_COLOR).set_z_index(3)
+        
+        self.play(GrowArrow(arrow_contrast))
+        self.play(
+            FadeIn(contrast_img),
+            ShowCreation(contrast_border),
+            Write(contrast_label),
+            run_time=0.8
+        )
+        self.wait(1)
+
+        self.play(FadeOut(arrow_contrast), FadeOut(arrow_edges), FadeOut(arrow_shapes), FadeOut(arrow_texture))
+        
+        # ==========================================
+        # PART 4: Pulse all features together
+        # ==========================================
+        
+        all_borders = VGroup(edges_border, texture_border, shapes_border, contrast_border)
+        
+        self.play(
+            all_borders.animate.set_stroke(width=6),
+            rate_func=there_and_back,
+            run_time=0.8
+        )
+        self.play(
+            all_borders.animate.set_stroke(width=6),
+            rate_func=there_and_back,
+            run_time=0.8
+        )
+        
+        self.wait(2)
+        
+        self.embed()
+
+
+class Convolution_Over_Volume(ThreeDScene):
+    
+    def construct(self):
+        
+        # Set up camera for 3D view
+        self.set_camera_orientation(phi=65 * DEGREES, theta=-45 * DEGREES)
+        self.camera.frame.scale(1.3).shift(UP * 0.5)
+        
+        # ==========================================
+        # SETUP: Create 6x6x3 Input Volume (RGB)
+        # ==========================================
+        
+        cell_size = 0.4
+        
+        # Colors for each channel
+        channel_colors = ["#ff0000", "#00ff00", "#0000ff"]  # R, G, B
+        
+        # Create input volume using 3D cubes
+        input_volume = VGroup()
+        input_cells = {}
+        
+        for z in range(3):  # Depth: 0=Red, 1=Green, 2=Blue
+            for i in range(6):  # Rows
+                for j in range(6):  # Columns
+                    cube = Cube(side_length=cell_size)
+                    cube.set_fill(channel_colors[z], opacity=0.7)
+                    cube.set_stroke(channel_colors[z], width=1)
+                    cube.move_to(
+                        RIGHT * j * cell_size + 
+                        DOWN * i * cell_size + 
+                        OUT * z * cell_size
+                    )
+                    input_cells[(i, j, z)] = cube
+                    input_volume.add(cube)
+        
+        input_volume.center()
+        input_volume.move_to(LEFT * 4)
+        
+        input_label = Text("6 × 6 × 3", font_size=32, weight=BOLD)
+        input_label.next_to(input_volume, UP, buff=0.6)
+        input_label.rotate(65 * DEGREES, axis=RIGHT)
+        
+        # ==========================================
+        # SETUP: Create 3x3x3 Filter (Yellow)
+        # ==========================================
+        
+        filter_volume = VGroup()
+        filter_cells = {}
+        
+        for z in range(3):
+            for i in range(3):
+                for j in range(3):
+                    cube = Cube(side_length=cell_size)
+                    cube.set_fill(YELLOW, opacity=0.85)
+                    cube.set_stroke("#ffff00", width=1)
+                    cube.move_to(
+                        RIGHT * j * cell_size + 
+                        DOWN * i * cell_size + 
+                        OUT * z * cell_size
+                    )
+                    filter_cells[(i, j, z)] = cube
+                    filter_volume.add(cube)
+        
+        filter_volume.center()
+        filter_volume.move_to(ORIGIN)
+        
+        filter_label = Text("3 × 3 × 3", font_size=32, weight=BOLD)
+        filter_label.set_color(YELLOW)
+        filter_label.next_to(filter_volume, UP, buff=0.6)
+        filter_label.rotate(65 * DEGREES, axis=RIGHT)
+        
+        # ==========================================
+        # SETUP: Create 4x4x1 Output (White)
+        # ==========================================
+        
+        output_volume = VGroup()
+        output_cells = {}
+        
+        for i in range(4):
+            for j in range(4):
+                cube = Cube(side_length=cell_size)
+                cube.set_fill(WHITE, opacity=0.3)
+                cube.set_stroke("#ffffff", width=1)
+                cube.move_to(
+                    RIGHT * j * cell_size + 
+                    DOWN * i * cell_size
+                )
+                output_cells[(i, j)] = cube
+                output_volume.add(cube)
+        
+        output_volume.center()
+        output_volume.move_to(RIGHT * 4)
+        
+        output_label = Text("4 × 4", font_size=32, weight=BOLD)
+        output_label.set_color(WHITE)
+        output_label.next_to(output_volume, UP, buff=0.6)
+        output_label.rotate(65 * DEGREES, axis=RIGHT)
+        
+        # ==========================================
+        # SETUP: Symbols
+        # ==========================================
+        
+        asterisk = Tex(r"\times", font_size=72)
+        asterisk.set_color(WHITE)
+        asterisk.move_to(LEFT * 1.8)
+        
+        equals_sign = Tex(r"=", font_size=72)
+        equals_sign.set_color(WHITE)
+        equals_sign.move_to(RIGHT * 1.8)
+        
+        # ==========================================
+        # PART 1: Show input volume
+        # ==========================================
+        
+        self.play(
+            LaggedStartMap(FadeIn, input_volume, lag_ratio=0.01),
+            run_time=2
+        )
+        
+        self.play(
+            Write(input_label),
+            run_time=1
+        )
+        self.wait(0.5)
+        
+        # Rotate camera to show 3D structure
+        self.play(
+            self.camera.frame.animate.increment_theta(30 * DEGREES),
+            run_time=2
+        )
+        self.play(
+            self.camera.frame.animate.increment_theta(-30 * DEGREES),
+            run_time=2
+        )
+        
+        # ==========================================
+        # PART 2: Show filter
+        # ==========================================
+        
+        self.play(Write(asterisk), run_time=0.5)
+        
+        self.play(
+            LaggedStartMap(FadeIn, filter_volume, lag_ratio=0.02),
+            run_time=1.5
+        )
+        
+        self.play(
+            Write(filter_label),
+            run_time=1
+        )
+        self.wait(0.5)
+        
+        # ==========================================
+        # PART 3: Show output
+        # ==========================================
+        
+        self.play(Write(equals_sign), run_time=0.5)
+        
+        self.play(
+            LaggedStartMap(FadeIn, output_volume, lag_ratio=0.03),
+            run_time=1
+        )
+        
+        self.play(
+            Write(output_label),
+            run_time=1
+        )
+        self.wait(1)
+        
+        # ==========================================
+        # PART 4: Move filter over input and convolve
+        # ==========================================
+        
+        self.play(
+            FadeOut(asterisk),
+            FadeOut(equals_sign),
+            FadeOut(filter_label),
+            FadeOut(input_label),
+            run_time=0.8
+        )
+        
+        # Make filter semi-transparent
+        self.play(
+            *[cube.animate.set_fill(YELLOW, opacity=0.4) for cube in filter_volume],
+            run_time=0.5
+        )
+        
+        # Get reference positions
+        # Input cell (1,1,1) is the center of where filter should go first
+        # Filter center is at (1,1,1)
+        
+        # Calculate first position
+        # We want filter's center cell (1,1,1) to align with input's (1,1,1)
+        input_center_cell = input_cells[(1, 1, 1)]
+        filter_center_cell = filter_cells[(1, 1, 1)]
+        
+        filter_offset = filter_volume.get_center() - filter_center_cell.get_center()
+        first_pos = input_center_cell.get_center() + filter_offset
+        
+        self.play(
+            filter_volume.animate.move_to(first_pos),
+            run_time=1
+        )
+        self.wait(0.5)
+        
+        # ==========================================
+        # PART 5: Convolve - fill output cells
+        # ==========================================
+        
+        for out_row in range(4):
+            for out_col in range(4):
+                # Filter center at input (out_row+1, out_col+1, 1)
+                target_input_cell = input_cells[(out_row + 1, out_col + 1, 1)]
+                target_pos = target_input_cell.get_center() + filter_offset
+                
+                # Move filter (skip first)
+                if not (out_row == 0 and out_col == 0):
+                    self.play(
+                        filter_volume.animate.move_to(target_pos),
+                        run_time=0.35
+                    )
+                
+                # Fill output cell
+                self.play(
+                    output_cells[(out_row, out_col)].animate.set_fill(WHITE, opacity=0.9),
+                    run_time=0.25
+                )
+        
+        self.wait(1)
+        
+        # ==========================================
+        # PART 6: Restore and final view
+        # ==========================================
+        
+        self.play(
+            filter_volume.animate.move_to(ORIGIN),
+            run_time=0.8
+        )
+        
+        self.play(
+            *[cube.animate.set_fill(YELLOW, opacity=0.85) for cube in filter_volume],
+            run_time=0.5
+        )
+        
+        self.play(
+            FadeIn(asterisk),
+            FadeIn(equals_sign),
+            FadeIn(filter_label),
+            FadeIn(input_label),
+            run_time=0.8
+        )
+        
+        self.wait(1)
+        
+        # ==========================================
+        # PART 7: Final camera rotation to show result
+        # ==========================================
+        
+        self.play(
+            self.camera.frame.animate.increment_theta(60 * DEGREES),
+            run_time=3
+        )
+        
+        self.wait(1)
+        
+        # Key insight
+        insight = Text("3D Volume → 2D Output", font_size=36, weight=BOLD)
+        insight.set_color(TEAL_B)
+        insight.to_edge(DOWN, buff=0.5)
+        insight.fix_in_frame()
+        
+        self.play(Write(insight), run_time=1.5)
+        
+        self.wait(3)
+
+
+class CNN_Intro(Scene):
+    
+    def construct(self):
+
+        self.camera.frame.shift(RIGHT*6).scale(1.16)
+                
+        # ==========================================
+        # PART 1: Create Neural Network (like original)
+        # ==========================================
+        
+        HIDDEN_COLOR = BLUE
+        OUTPUT_COLOR = ORANGE
+
+        layer_sizes = [5, 6, 4, 3, 1]
+        layer_spacing = 2.5  # 30% reduced
+        neuron_spacing = 1.2
+
+        layers = []
+
+        # ===== CREATE NEURONS =====
+        for i, size in enumerate(layer_sizes):
+            layer = VGroup()
+            for j in range(size):
+                neuron = Circle(radius=0.22, color=WHITE, fill_opacity=0.15).set_z_index(1)
+                if i == 0:
+                    neuron.set_fill(GREEN, opacity=1).set_stroke(GREEN_B).scale(1.2).set_z_index(1)
+                elif i == len(layer_sizes) - 1:
+                    neuron.set_fill(OUTPUT_COLOR, opacity=1).set_stroke(RED_B).scale(2).set_z_index(1)
+                else:
+                    neuron.set_fill(HIDDEN_COLOR, opacity=1).set_stroke(BLUE_B).scale(1.7)
+                neuron.move_to(RIGHT * 1.24 * i * layer_spacing + UP * (j - (size - 1) / 2) * neuron_spacing).set_z_index(1)
+                layer.add(neuron)
+            layers.append(layer)
+
+        network = VGroup(*layers)
+
+        # ===== CREATE CONNECTIONS =====
+        connections = VGroup()
+        for l1, l2 in zip(layers[:-1], layers[1:]):
+            for n1 in l1:
+                for n2 in l2:
+                    line = Line(
+                        n1.get_center(), n2.get_center(),
+                        color=GREY_B, stroke_width=1.5
+                    ).set_z_index(-1)
+                    connections.add(line)
+        
+        connections.set_z_index(-1)
+
+        # ===== ANIMATE: Neurons FIRST, then connections =====
+        self.play(
+            LaggedStartMap(GrowFromCenter, network, lag_ratio=0.05, run_time=1.5),
+        )
+        self.play(
+            LaggedStartMap(ShowCreation, connections, lag_ratio=0.01, run_time=1.5),
+        )
+        self.wait(2)
+
+        
+        # ==========================================
+        # PART 2: Show Image - Move Camera Left
+        # ==========================================
+        
+        gap = 2.0
+        conv_width = 2.0
+        
+        # Load cat image
+        image = ImageMobject("cat.jpeg")
+        image.set_height(3.0)
+        image.next_to(layers[0], LEFT, buff=gap + conv_width + gap)
+        
+        image_label = Text("Input Image", font_size=44, weight=BOLD)
+        image_label.next_to(image, UP, buff=0.47)
+        
+        # Add border to image
+        border = SurroundingRectangle(image, color=MAROON_C, stroke_width=3, buff=0.05)
+        
+        # Move camera to show image
+        self.play(
+            self.camera.frame.animate.shift(LEFT * 9).scale(1.17),
+            FadeIn(image),
+            ShowCreation(border),
+            Write(image_label),
+            run_time=1.5
+        )
+        self.wait(1)
+        
+        # Show image dimensions
+        dim_text = Tex(r"100 \times 100 \times 3", font_size=44, color=YELLOW)
+        dim_text.next_to(image, DOWN, buff=0.4).scale(1.4).shift(DOWN*0.34)
+        
+        self.play(Write(dim_text))
+        self.wait(2)
+
+        
+        # Calculate total inputs
+        calc_text = Tex(r"= 30{,}000 \text{ pixels!}", font_size=44, color=PURE_RED)
+        calc_text.next_to(dim_text, DOWN, buff=0.3).scale(1.4).shift(DOWN*0.34)
+        
+        self.play(Write(calc_text))
+        
+        calc_box = SurroundingRectangle(calc_text, color=PURE_RED, buff=0.12).scale(1.1)
+        self.play(ShowCreation(calc_box))
+        self.wait(2)
+        
+        # ==========================================
+        # PART 3: Show Direct Input Problem
+        # TransformFromCopy(border, VGroup of input neurons)
+        # ==========================================
+        
+        input_neurons = layers[0]
+        
+        # TransformFromCopy the image border to the input layer VGroup
+        # This shows the whole image being fed directly to inputs
+        self.play(
+            TransformFromCopy(border.copy(), input_neurons.copy().set_stroke(WHITE, width=3)),
+            run_time=1
+        )
+        self.wait(1)
+        
+        # Show problem text
+        problem_text = Text("30,000 inputs → Millions of parameters!", color=PURE_RED, font_size=50).shift(RIGHT*2.6)
+        problem_text.next_to(calc_box, DOWN, buff=0.4).shift(RIGHT*5+DOWN*0.56)
+        self.play(Write(problem_text), FadeOut(calc_text), FadeOut(calc_box), self.camera.frame.animate.shift(DOWN))
+        self.wait(2)
+
+        # ==========================================
+        # PART 4: Solution - Conv Layer Feature Extractor
+        # ==========================================
+        
+        # Fade out ALL problem indicators
+        self.play(
+            FadeOut(problem_text),
+            FadeOut(dim_text),
+            self.camera.frame.animate.shift(UP*RIGHT*0.4)
+        )
+        self.wait(1)
+        
+        # Create Conv Layer box - EQUIDISTANT from image and input layer
+        conv_box = RoundedRectangle(
+            width=conv_width,
+            height=3.5,
+            corner_radius=0.25,
+            fill_color=FEATURE_COLOR,
+            fill_opacity=0.2,
+            stroke_color=FEATURE_COLOR,
+            stroke_width=4
+        )
+        # Position exactly in the middle
+        conv_center_x = (image.get_right()[0] + layers[0].get_left()[0]) / 2
+        conv_box.move_to([conv_center_x, 0, 0])
+        
+        # Two-line label: CONV \n LAYER
+        conv_label = VGroup(
+            Text("CONV", font_size=36, color=FEATURE_COLOR, weight=BOLD),
+            Text("LAYER", font_size=36, color=FEATURE_COLOR, weight=BOLD),
+        )
+        conv_label.arrange(DOWN, buff=0.1)
+        conv_label.move_to(conv_box.get_center())
+        
+        # Show conv box
+        self.play(ShowCreation(conv_box), run_time=1)
+        self.play(Write(conv_label))
+        self.wait(0.5)
+
+        
+        # Arrow from image to Conv
+        arrow1 = Arrow(
+            image.get_right(),
+            conv_box.get_left(),
+            buff=0.15,
+            color=WHITE,
+            stroke_width=4
+        ).set_color(WHITE)
+        self.play(GrowArrow(arrow1))
+        self.wait(0.5)
+
+        # ==========================================
+        # PART 4b: Image -> Conv box (image shrinks to center, then label appears)
+        # ==========================================
+        
+        # Create a copy of image that will move to conv box
+        image_copy = image.copy()
+        
+        # Move and shrink image copy to center of conv box
+        self.play(
+            image_copy.animate.move_to(conv_box.get_center()).scale(0.24),
+            run_time=1.5
+        )
+        
+        # Fade out image copy and show the CONV LAYER text
+        self.play(
+            FadeOut(image_copy),
+            run_time=1
+        )
+        self.wait(1)
+        
+        # Feature descriptions below Conv box
+        features_text = VGroup(
+            Text("• Edge Detection", font_size=40, color=GREY_A, weight=BOLD),
+            Text("• Texture Analysis", font_size=40, color=GREY_A, weight=BOLD),
+            Text("• Shape Recognition", font_size=40, color=GREY_A, weight=BOLD),
+        )
+        features_text.arrange(DOWN, aligned_edge=LEFT, buff=0.48)
+        features_text.next_to(conv_box, DOWN, buff=1)
+        
+        self.play(LaggedStartMap(FadeIn, features_text, lag_ratio=0.15))
+        self.wait(1)
+        
+        
+        # ==========================================
+        # PART 4c: Conv box -> Input neurons
+        # Create orange feature circles, then TransformFromCopy to inputs
+        # ==========================================
+        
+        # Create feature circles inside conv box
+        feature_circles = VGroup()
+        for i in range(5):
+            circle = Circle(
+                radius=0.18,
+                fill_color=PURPLE_C,
+                fill_opacity=0.9,
+                stroke_width=2,
+                stroke_color=WHITE
+            )
+            y_offset = (2 - i) * 0.55
+            circle.move_to(conv_box.get_center() + UP * y_offset)
+            feature_circles.add(circle)
+        
+        self.play(LaggedStartMap(GrowFromCenter, feature_circles, lag_ratio=0.1))
+        self.wait(0.5)
+        
+        # Arrow from Conv to input layer
+        arrow2 = Arrow(
+            conv_box.get_right(),
+            layers[0].get_left(),
+            buff=0.15,
+            color=WHITE,
+            stroke_width=4
+        ).set_color(WHITE)
+        self.play(GrowArrow(arrow2))
+        self.wait(0.5)
+        
+        # TransformFromCopy: each orange circle -> corresponding input neuron
+        self.play(
+            *[Transform(feature_circles, neuron)
+              for feature_circles, neuron in zip(feature_circles, input_neurons)],
+            run_time=2
+        )
+        self.wait(0.5)
+        
+        
+        # ==========================================
+        # PART 5: Show the Benefit
+        # ==========================================
+        
+        # New calculation showing reduced inputs
+        new_calc = Tex(r"30{,}000 \rightarrow 256 \text{ features}", font_size=36)
+        new_calc.next_to(features_text, DOWN, buff=0.4)
+        new_calc[:6].set_color(PURE_RED)
+        new_calc[7:].set_color(GREEN)
+
+        new_calc.scale(3).shift(UP*1.4)
+        
+        self.play(Write(new_calc), FadeOut(features_text))
+        
+        benefit_box = SurroundingRectangle(new_calc, stroke_width=6).scale(1.23)
+        self.play(ShowCreation(benefit_box))
+        self.wait(2)
+
+
+        # Pan camera to show full pipeline
+        self.play(
+            self.camera.frame.animate.scale(1.32).shift(RIGHT*4.2).shift(DOWN*0.56),
+            FadeOut(benefit_box),
+            FadeOut(new_calc),
+            run_time=1
+        )
+        self.wait(1)
+        
+        
+        # Final summary at bottom
+        summary = VGroup(
+            Text("Image", font_size=26),
+            Tex(r"\rightarrow", font_size=34),
+            Text("Conv Layer", font_size=26, color=FEATURE_COLOR),
+            Tex(r"\rightarrow", font_size=34),
+            Text("Features", font_size=26, color=GREEN),
+            Tex(r"\rightarrow", font_size=34),
+            Text("ANN", font_size=26, color=BLUE),
+            Tex(r"\rightarrow", font_size=34),
+            Text("Output", font_size=26, color=ORANGE),
+        )
+        summary.arrange(RIGHT, buff=0.2)
+        summary.to_edge(DOWN, buff=0.5).scale(2.2).shift(DOWN*2.3+RIGHT*0.8)
+        
+        self.play(
+            LaggedStartMap(FadeIn, summary, lag_ratio=0.1),
+            run_time=2
+        )
+        
+        # Highlight the key insight
+        insight_box = SurroundingRectangle(summary[2:5], color=YELLOW,).scale(1.044)
+        self.play(ShowCreation(insight_box))
+        
+        insight_text = Text("Reduces complexity!", font_size=56, weight=BOLD).set_color(PURPLE_C)
+        insight_text.next_to(insight_box, DOWN, buff=0.5)
+        self.play(Write(insight_text))
+        
+        self.wait(1)
+        
+        # Checkmark with proper green color
+        check = Tex(r"\checkmark", font_size=130)
+        check.set_color("#00ff00")
+        check.next_to(insight_text, RIGHT, buff=0.6)
+        self.play(Write(check))
+        
+        self.wait(3)
+
+
+        self.camera.frame.save_state()
+
+
+
+        # ==========================================
+        # PART 6: NEW - Full CNN Pipeline
+        # Keep ANN intact, fade out texts/boxes/arrows, move image left
+        # Build Conv -> Pool -> Conv -> Pool -> Features -> ANN
+        # ==========================================
+        
+        # Fade out only the texts, boxes, arrows, conv box - NOT the network
+        self.play(
+            FadeOut(summary),
+            FadeOut(insight_box),
+            FadeOut(insight_text),
+            FadeOut(check),
+            FadeOut(conv_box),
+            FadeOut(conv_label),
+            FadeOut(arrow1),
+            FadeOut(arrow2),
+            FadeOut(image_label),
+            FadeOut(feature_circles),
+            run_time=1.5
+        )
+        
+        # Group image and border together (use Group, not VGroup, because ImageMobject is not a VMobject)
+        image_group = Group(image, border)
+        
+        # Move image+border far to the left
+        self.play(
+            image_group.animate.shift(LEFT * 15),
+            self.camera.frame.animate.scale(1.2).shift(LEFT*13.4),
+            run_time=1.5
+        )
+        self.wait(0.5)
+
+        # ==========================================
+        # Helper function to create stacked rounded rects
+        # ==========================================
+        def create_layer_stack(num_filters, width, height, color, depth_offset=0.15):
+            """Create stacked rounded rectangles representing filters/channels"""
+            stack = VGroup()
+            for i in range(num_filters):
+                rect = RoundedRectangle(
+                    width=width,
+                    height=height,
+                    corner_radius=0.12,
+                    fill_color=color,
+                    fill_opacity=0.7 - i * 0.1,
+                    stroke_color=WHITE,
+                    stroke_width=2
+                )
+                rect.shift(RIGHT * i * depth_offset + UP * i * depth_offset * 0.4)
+                stack.add(rect)
+            return stack
+
+
+
+        # ==========================================
+        # Create CNN layers positioned between image and ANN input
+        # ==========================================
+        
+        # Calculate positions
+        image_right = image_group.get_right()[0]
+        ann_input_left = layers[0].get_left()[0]
+        total_space = ann_input_left - image_right
+        
+        # Position layers evenly
+        spacing = total_space / 6
+        
+        # --- CONV LAYER 1 ---
+        conv1 = create_layer_stack(4, 2.5, 2.5, MAROON_B, 0.2)
+        conv1.next_to(image, RIGHT, buff=1.8)
+        conv1_label = Text("Conv1 + ReLU", font_size=40, weight=BOLD)
+        conv1_label.next_to(conv1, DOWN, buff=0.5)
+
+
+        # --- POOL LAYER 1 ---
+        pool1 = create_layer_stack(4, 1.8, 1.8, TEAL_B, 0.18)
+        pool1.next_to(conv1, RIGHT, buff=1.8)
+        pool1_label = Text("Pool1", font_size=40,  weight=BOLD)
+        pool1_label.next_to(pool1, DOWN, buff=0.5)
+        
+        # --- CONV LAYER 2 ---
+        conv2 = create_layer_stack(5, 1.5, 1.5, MAROON_B, 0.16)
+        conv2.next_to(pool1, RIGHT, buff=1.8)
+        conv2_label = Text("Conv2 + ReLU", font_size=40,  weight=BOLD)
+        conv2_label.next_to(conv2, DOWN, buff=0.5)
+        
+        # --- POOL LAYER 2 ---
+        pool2 = create_layer_stack(5, 1.0, 1.0, TEAL_B, 0.14)
+        pool2.next_to(conv2, RIGHT, buff=1.8)
+        pool2_label = Text("Pool2", font_size=40 , weight=BOLD)
+        pool2_label.next_to(pool2, DOWN, buff=0.5)
+
+
+        # --- FEATURE EXTRACTOR (rectangle with circles inside) ---
+        feature_box = RoundedRectangle(
+            width=1.8,
+            height=3.2,
+            corner_radius=0.2,
+            fill_color=PURPLE,
+            fill_opacity=0.3,
+            stroke_color=PURPLE_A,
+            stroke_width=3
+        )
+        feature_box.next_to(pool2, RIGHT, buff=1.55)
+
+
+        # Circles inside showing extracted features
+        feature_dots = VGroup()
+        for i in range(5):
+            dot = Circle(
+                radius=0.2,
+                fill_color=PURPLE_C,
+                fill_opacity=0.9,
+                stroke_color=WHITE,
+                stroke_width=2
+            )
+            dot.move_to(feature_box.get_center() + UP * (2 - i) * 0.55)
+            feature_dots.add(dot)
+        
+        feature_label = Text("Features", font_size=40, color=PURPLE_A, weight=BOLD)
+        feature_label.next_to(feature_box, DOWN, buff=0.5)
+        
+        self.camera.frame.save_state()
+
+        self.play(self.camera.frame.animate.scale(0.4).shift(LEFT*6.88+UP*1.55))
+
+        # ==========================================
+        # ANIMATE THE PIPELINE (consistent style: arrow first, then layer)
+        # ==========================================
+        
+        # Arrow: Image -> Conv1
+        arrow_img_conv1 = Arrow(
+            image_group.get_right(),
+            conv1.get_left(),
+            buff=0.15,
+            color=WHITE,
+            stroke_width=3
+        ).set_color(WHITE)
+        
+        self.play(GrowArrow(arrow_img_conv1))
+        self.wait(0.3)
+        
+        # Conv1 appears
+        self.play(
+            LaggedStartMap(FadeIn, conv1, lag_ratio=0.1),
+            Write(conv1_label),
+            run_time=1
+        )
+        self.wait(0.3)
+        
+        # Arrow: Conv1 -> Pool1
+        arrow_conv1_pool1 = Arrow(
+            conv1.get_right(),
+            pool1.get_left(),
+            buff=0.15,
+            color=WHITE,
+            stroke_width=3
+        ).set_color(WHITE)
+        
+        self.play(GrowArrow(arrow_conv1_pool1), self.camera.frame.animate.shift(RIGHT*3))
+        self.wait(0.3)
+        
+        # Pool1 appears
+        self.play(
+            LaggedStartMap(FadeIn, pool1, lag_ratio=0.1),
+            Write(pool1_label),
+            run_time=1
+        )
+        self.wait(0.3)
+        
+        # Arrow: Pool1 -> Conv2
+        arrow_pool1_conv2 = Arrow(
+            pool1.get_right(),
+            conv2.get_left(),
+            buff=0.15,
+            color=WHITE,
+            stroke_width=3
+        ).set_color(WHITE)
+        
+        self.play(GrowArrow(arrow_pool1_conv2), self.camera.frame.animate.shift(RIGHT*4.7))
+        self.wait(0.3)
+        
+        # Conv2 appears
+        self.play(
+            LaggedStartMap(FadeIn, conv2, lag_ratio=0.1),
+            Write(conv2_label),
+            run_time=1
+        )
+        self.wait(0.3)
+        
+        # Arrow: Conv2 -> Pool2
+        arrow_conv2_pool2 = Arrow(
+            conv2.get_right(),
+            pool2.get_left(),
+            buff=0.15,
+            color=WHITE,
+            stroke_width=3
+        ).set_color(WHITE)
+        
+        self.play(GrowArrow(arrow_conv2_pool2), self.camera.frame.animate.shift(RIGHT*4.5))
+        self.wait(0.3)
+        
+        # Pool2 appears
+        self.play(
+            LaggedStartMap(FadeIn, pool2, lag_ratio=0.1),
+            Write(pool2_label),
+            run_time=1
+        )
+        self.wait(0.3)
+        
+        # Arrow: Pool2 -> Features (Flatten)
+        arrow_pool2_feat = Arrow(
+            pool2.get_right(),
+            feature_box.get_left(),
+            buff=0.15,
+            color=WHITE,
+            stroke_width=3
+        ).set_color(WHITE)
+        flatten_label = Text("Flatten", font_size=18, color=YELLOW, weight=BOLD)
+        flatten_label.next_to(arrow_pool2_feat, UP, buff=0.23)
+        
+        self.play(GrowArrow(arrow_pool2_feat), Write(flatten_label), self.camera.frame.animate.shift(RIGHT*3))
+        self.wait(0.3)
+        
+        # Feature box appears
+        self.play(
+            ShowCreation(feature_box),
+            Write(feature_label),
+            run_time=1
+        )
+        
+        # Feature dots appear inside
+        self.play(
+            LaggedStartMap(GrowFromCenter, feature_dots, lag_ratio=0.1),
+            run_time=1
+        )
+        self.wait(0.3)
+        
+        # Arrow: Features -> ANN input layer
+        arrow_feat_ann = Arrow(
+            feature_box.get_right(),
+            layers[0].get_left(),
+            buff=0.15,
+            color=WHITE,
+            stroke_width=3
+        ).set_color(WHITE)
+        
+        self.play(GrowArrow(arrow_feat_ann), self.camera.frame.animate.shift(RIGHT*3))
+        self.wait(0.5)
+        
+        # Highlight the connection - features flow into ANN
+        self.play(
+            *[TransformFromCopy(fd, neuron) 
+              for fd, neuron in zip(feature_dots, layers[0])],
+            run_time=1.5
+        )
+        self.wait(2)
+
+
+        self.play(self.camera.frame.animate.restore().shift(RIGHT*2+DOWN*0.39))
+        
+
+        pipeline_text = VGroup(
+            Text("Input", font_size=22, color=WHITE),
+            Tex(r"\rightarrow", font_size=26),
+            Text("Conv", font_size=22, ),
+            Tex(r"\rightarrow", font_size=26),
+            Text("Pool", font_size=22,),
+            Tex(r"\rightarrow", font_size=26),
+            Text("Conv", font_size=22, ),
+            Tex(r"\rightarrow", font_size=26),
+            Text("Pool", font_size=22, ),
+            Tex(r"\rightarrow", font_size=26),
+            Text("Features", font_size=22, color=PURPLE_A),
+            Tex(r"\rightarrow", font_size=26),
+            Text("ANN", font_size=22, color=BLUE),
+            Tex(r"\rightarrow", font_size=26),
+            Text("Output", font_size=22, color=OUTPUT_COLOR),
+        )
+        pipeline_text.arrange(RIGHT, buff=0.12)
+        pipeline_text.scale(2.7).to_edge(DOWN, buff=0.6).shift(RIGHT * 2)
+        pipeline_text.next_to(pool1, DOWN, buff=3).shift(DOWN*1.7+RIGHT*3)
+
+        self.play(
+            LaggedStartMap(FadeIn, pipeline_text, lag_ratio=0.06),
+            run_time=2
+        )
+        self.wait()
+
+        c = Tex(r"\checkmark").set_color("#00ff00").scale(6.5)
+        c.next_to(pipeline_text, DOWN, buff=0.9)
+
+        self.play(GrowFromCenter(c))
+
+        
+        self.wait(2)
+
+
 
 class Pooling(Scene):
     
