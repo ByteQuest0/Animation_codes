@@ -3,6 +3,765 @@ import numpy as np
 from PIL import Image, ImageFilter, ImageOps
 import os
 
+
+class ReceptiveField(Scene):
+    """
+    Clean Receptive Field Visualization
+    - Default dark background
+    - Simple colors
+    - Educational flow
+    - Feature hierarchy explanation at end
+    """
+    
+    def construct(self):
+
+        self.camera.frame.scale(1.2).shift(DOWN*0.5).scale(0.87)
+        
+        # Simple colors
+        GOLD = "#FFD700"
+        CORAL = "#FF6B6B"
+        MINT = "#90EE90"
+        LAVENDER = "#DDA0DD"
+        BLUE = "#6699CC"
+        
+        # ==========================================
+        # INTRO: WHAT IS A RECEPTIVE FIELD?
+        # ==========================================
+        
+        title = Text("Receptive Field", font_size=60, weight=BOLD)
+        title.set_color(WHITE)
+        title.move_to(UP * 2.2)
+        
+        self.play(Write(title), run_time=1)
+        self.wait(0.5)
+        
+        # Simple visual explanation
+        demo_cell = 0.45
+        demo_input = VGroup()
+        for i in range(5):
+            for j in range(5):
+                cell = Square(side_length=demo_cell)
+                cell.set_fill(BLUE, opacity=0.2)
+                cell.set_stroke(BLUE, width=1.5)
+                cell.move_to(RIGHT * (j - 2) * demo_cell + DOWN * (i - 2) * demo_cell)
+                demo_input.add(cell)
+        demo_input.move_to(LEFT * 2.5 + DOWN * 0.3)
+        
+        # Highlight 3x3 region
+        demo_rf = VGroup()
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=demo_cell)
+                cell.set_fill(CORAL, opacity=0.7)
+                cell.set_stroke(WHITE, width=2)
+                cell.move_to(RIGHT * (j - 1) * demo_cell + DOWN * (i - 1) * demo_cell)
+                demo_rf.add(cell)
+        demo_rf.move_to(demo_input.get_center())
+        
+        # Single output pixel
+        demo_output = Square(side_length=demo_cell * 1.2)
+        demo_output.set_fill(GOLD, opacity=0.9)
+        demo_output.set_stroke(WHITE, width=2)
+        demo_output.move_to(RIGHT * 2.5 + DOWN * 0.3)
+        
+        # Arrow
+        demo_arrow = Arrow(demo_rf.get_right() + RIGHT * 0.3, demo_output.get_left() + LEFT * 0.3,
+                          buff=0.1, stroke_width=3)
+        demo_arrow.set_color(WHITE)
+        
+        # Labels
+        input_txt = Text("Input Region", font_size=30, weight=BOLD)
+        input_txt.set_color(CORAL)
+        input_txt.next_to(demo_input, DOWN, buff=0.5)
+        
+        output_txt = Text("Output Pixel", font_size=30, weight=BOLD)
+        output_txt.set_color(GOLD)
+        output_txt.next_to(demo_output, DOWN, buff=0.5)
+        
+        # Definition
+        definition = Text(
+            "The receptive field is the input region \n     that affects one output pixel",
+            font_size=28,
+            weight=BOLD
+        )
+        definition.to_edge(DOWN, buff=0.6).shift(DOWN*0.3)
+        
+        self.play(FadeIn(demo_input), run_time=0.5)
+        self.play(LaggedStartMap(FadeIn, demo_rf, lag_ratio=0.05), run_time=0.4)
+        self.play(
+            GrowArrow(demo_arrow),
+            FadeIn(demo_output, scale=1.2),
+            run_time=0.5
+        )
+        self.play(
+            FadeIn(input_txt), FadeIn(output_txt),
+            FadeIn(definition, shift=UP * 0.2),
+            run_time=0.5
+        )
+        
+        self.wait(2)
+
+        
+        # Clear intro
+        self.play(
+            FadeOut(VGroup(title, demo_input, demo_rf, demo_output, demo_arrow,
+                          input_txt, output_txt, definition)),
+            run_time=0.5
+        )
+        
+        # ==========================================
+        # PART 1: SINGLE 3x3 CONVOLUTION
+        # ==========================================
+        
+        section1 = Text("Single 3x3 Convolution", font_size=38, weight=BOLD)
+        section1.set_color(WHITE)
+        section1.to_edge(UP, buff=0.45).shift(DOWN*0.69)
+        
+        self.play(FadeIn(section1), run_time=0.4)
+        
+        # Input 7x7
+        cell_size = 0.48
+        input_size = 7
+        
+        input_grid = VGroup()
+        input_cells = {}
+        for i in range(input_size):
+            for j in range(input_size):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(BLUE, opacity=0.15)
+                cell.set_stroke(BLUE, width=1)
+                cell.move_to(
+                    RIGHT * (j - input_size/2 + 0.5) * cell_size +
+                    DOWN * (i - input_size/2 + 0.5) * cell_size
+                )
+                input_cells[(i, j)] = cell
+                input_grid.add(cell)
+        input_grid.move_to(LEFT * 3.5 + DOWN * 1.3)
+        
+        input_label = Text("Input", font_size=38, weight=BOLD)
+        input_label.set_color(BLUE)
+        input_label.next_to(input_grid, UP, buff=0.65)
+        
+        input_dim = Text("7 × 7", font_size=34)
+        input_dim.set_color(GREY_B)
+        input_dim.next_to(input_label, DOWN, buff=0.12)
+        
+        input_rf = Text("RF = 1", font_size=34, weight=BOLD)
+        input_rf.set_color(GREY_A)
+        input_rf.next_to(input_grid, DOWN, buff=0.4)
+        
+        # Output 5x5
+        output_size = 5
+        output_grid = VGroup()
+        output_cells = {}
+        for i in range(output_size):
+            for j in range(output_size):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(MINT, opacity=0.15)
+                cell.set_stroke(MINT, width=1)
+                cell.move_to(
+                    RIGHT * (j - output_size/2 + 0.5) * cell_size +
+                    DOWN * (i - output_size/2 + 0.5) * cell_size
+                )
+                output_cells[(i, j)] = cell
+                output_grid.add(cell)
+        output_grid.move_to(RIGHT * 3.5 + DOWN * 1.3)
+        
+        output_label = Text("Output", font_size=38, weight=BOLD)
+        output_label.set_color(MINT)
+        output_label.next_to(output_grid, UP, buff=0.65)
+        
+        output_dim = Text("5 × 5", font_size=34)
+        output_dim.set_color(GREY_B)
+        output_dim.next_to(output_label, DOWN, buff=0.12)
+        
+        output_rf = Text("RF = 3", font_size=34, weight=BOLD)
+        output_rf.set_color(GOLD)
+        output_rf.next_to(output_grid, DOWN, buff=0.4)
+        
+        # Arrow and kernel
+        arrow = Arrow(input_grid.get_right() + RIGHT * 0.35,
+                     output_grid.get_left() + LEFT * 0.35,
+                     buff=0.1, stroke_width=3)
+        arrow.set_color(WHITE)
+        
+        kernel_label = Text("3x3", font_size=34, weight=BOLD)
+        kernel_label.set_color(GOLD)
+        kernel_label.next_to(arrow, UP, buff=0.18)
+        
+        # Animate
+        self.play(
+            LaggedStartMap(FadeIn, input_grid, lag_ratio=0.008),
+            FadeIn(input_label), FadeIn(input_dim), FadeIn(input_rf),
+            run_time=0.6
+        )
+        self.play(GrowArrow(arrow), FadeIn(kernel_label), run_time=0.4)
+        self.play(
+            LaggedStartMap(FadeIn, output_grid, lag_ratio=0.008),
+            FadeIn(output_label), FadeIn(output_dim), FadeIn(output_rf),
+            run_time=0.6
+        )
+        
+        self.wait(0.6)
+
+        
+        # ==========================================
+        # SHOW RF CONNECTION WITH LINES
+        # ==========================================
+        
+        out_pos = (2, 2)
+        in_i, in_j = out_pos
+        
+        # Output highlight
+        out_highlight = Square(side_length=cell_size)
+        out_highlight.set_fill(GOLD, opacity=0.9)
+        out_highlight.set_stroke(WHITE, width=2)
+        out_highlight.move_to(output_cells[out_pos].get_center())
+        
+        # Input RF highlight
+        rf_cells = VGroup()
+        for di in range(3):
+            for dj in range(3):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(CORAL, opacity=0.8)
+                cell.set_stroke(WHITE, width=1.5)
+                cell.move_to(input_cells[(in_i + di, in_j + dj)].get_center())
+                rf_cells.add(cell)
+        
+        rf_border = Square(side_length=cell_size * 3 + 0.04)
+        rf_border.set_stroke(CORAL, width=2.5)
+        rf_border.set_fill(opacity=0)
+        rf_border.move_to(input_cells[(in_i + 1, in_j + 1)].get_center())
+        
+        # Connection lines
+        lines = VGroup()
+        for di in range(3):
+            for dj in range(3):
+                start = input_cells[(in_i + di, in_j + dj)].get_center()
+                end = output_cells[out_pos].get_center()
+                line = Line(start, end, stroke_width=1.2)
+                line.set_stroke(CORAL, opacity=0.35)
+                lines.add(line)
+        
+        # Animate together
+        self.play(
+            FadeIn(out_highlight, scale=1.2),
+            LaggedStartMap(FadeIn, rf_cells, lag_ratio=0.03),
+            ShowCreation(rf_border),
+            LaggedStartMap(ShowCreation, lines, lag_ratio=0.02),
+            run_time=0.8
+        )
+        
+        self.wait(0.5)
+        
+        # Move across positions
+        positions = [(1, 1), (1, 3), (3, 1), (3, 3), (2, 2)]
+        
+        for new_pos in positions:
+            new_in_i, new_in_j = new_pos
+            new_out_center = output_cells[new_pos].get_center()
+            new_rf_center = input_cells[(new_in_i + 1, new_in_j + 1)].get_center()
+            
+            new_rf_cells = VGroup()
+            for di in range(3):
+                for dj in range(3):
+                    cell = Square(side_length=cell_size)
+                    cell.set_fill(CORAL, opacity=0.8)
+                    cell.set_stroke(WHITE, width=1.5)
+                    cell.move_to(input_cells[(new_in_i + di, new_in_j + dj)].get_center())
+                    new_rf_cells.add(cell)
+            
+            new_lines = VGroup()
+            for di in range(3):
+                for dj in range(3):
+                    start = input_cells[(new_in_i + di, new_in_j + dj)].get_center()
+                    line = Line(start, new_out_center, stroke_width=1.2)
+                    line.set_stroke(CORAL, opacity=0.35)
+                    new_lines.add(line)
+            
+            self.play(
+                out_highlight.animate.move_to(new_out_center),
+                rf_border.animate.move_to(new_rf_center),
+                Transform(rf_cells, new_rf_cells),
+                Transform(lines, new_lines),
+                run_time=0.35
+            )
+            self.wait(0.12)
+        
+        self.wait(0.8)
+        
+        # ==========================================
+        # PART 2: TWO CONVOLUTIONS - NO LINES
+        # ==========================================
+        
+        part1 = VGroup(
+            input_grid, input_label, input_dim, input_rf,
+            output_grid, output_label, output_dim, output_rf,
+            arrow, kernel_label,
+            out_highlight, rf_cells, rf_border, lines,
+            section1
+        )
+        self.play(FadeOut(part1), run_time=0.5)
+        
+        section2 = Text("Two Stacked 3x3 Convolutions", font_size=38, weight=BOLD)
+        section2.set_color(WHITE)
+        section2.to_edge(UP, buff=0.45).move_to(section1)
+        
+        self.play(FadeIn(section2), run_time=0.4)
+
+
+        # Three layers
+        lcell = 0.34
+        
+        # Layer 1: 9x9
+        l1_size = 9
+        l1_grid = VGroup()
+        l1_cells = {}
+        for i in range(l1_size):
+            for j in range(l1_size):
+                cell = Square(side_length=lcell)
+                cell.set_fill(BLUE, opacity=0.12)
+                cell.set_stroke(BLUE, width=0.8)
+                cell.move_to(
+                    RIGHT * (j - l1_size/2 + 0.5) * lcell +
+                    DOWN * (i - l1_size/2 + 0.5) * lcell
+                )
+                l1_cells[(i, j)] = cell
+                l1_grid.add(cell)
+        l1_grid.move_to(LEFT * 4.6 + DOWN * 1.42)
+        
+        l1_label = Text("Input", font_size=36, weight=BOLD)
+        l1_label.set_color(BLUE)
+        l1_label.next_to(l1_grid, UP, buff=0.75)
+        
+        l1_dim = Text("9x9", font_size=35)
+        l1_dim.set_color(GREY_B)
+        l1_dim.next_to(l1_label, DOWN, buff=0.15)
+        
+        l1_rf = Text("RF = 1", font_size=35, weight=BOLD)
+        l1_rf.set_color(GREY_A)
+        l1_rf.next_to(l1_grid, DOWN, buff=0.35)
+        
+        # Layer 2: 7x7
+        l2_size = 7
+        l2_grid = VGroup()
+        l2_cells = {}
+        for i in range(l2_size):
+            for j in range(l2_size):
+                cell = Square(side_length=lcell)
+                cell.set_fill(MINT, opacity=0.12)
+                cell.set_stroke(MINT, width=0.8)
+                cell.move_to(
+                    RIGHT * (j - l2_size/2 + 0.5) * lcell +
+                    DOWN * (i - l2_size/2 + 0.5) * lcell
+                )
+                l2_cells[(i, j)] = cell
+                l2_grid.add(cell)
+        l2_grid.move_to(RIGHT*0.5 + DOWN * 1.42)
+        
+        l2_label = Text("Hidden", font_size=36, weight=BOLD)
+        l2_label.set_color(MINT)
+        l2_label.next_to(l2_grid, UP, buff=0.75)
+        
+        l2_dim = Text("7x7", font_size=35)
+        l2_dim.set_color(GREY_B)
+        l2_dim.next_to(l2_label, DOWN, buff=0.15)
+        
+        l2_rf = Text("RF = 3", font_size=35, weight=BOLD)
+        l2_rf.set_color(GREY_A)
+        l2_rf.next_to(l2_grid, DOWN, buff=0.42)
+        
+        # Layer 3: 5x5
+        l3_size = 5
+        l3_grid = VGroup()
+        l3_cells = {}
+        for i in range(l3_size):
+            for j in range(l3_size):
+                cell = Square(side_length=lcell)
+                cell.set_fill(LAVENDER, opacity=0.12)
+                cell.set_stroke(LAVENDER, width=0.8)
+                cell.move_to(
+                    RIGHT * (j - l3_size/2 + 0.5) * lcell +
+                    DOWN * (i - l3_size/2 + 0.5) * lcell
+                )
+                l3_cells[(i, j)] = cell
+                l3_grid.add(cell)
+        l3_grid.move_to(RIGHT * 5.5 + DOWN * 1.42)
+            
+        l3_label = Text("Output", font_size=36, weight=BOLD)
+        l3_label.set_color(LAVENDER)
+        l3_label.next_to(l3_grid, UP, buff=0.75)
+        
+        l3_dim = Text("5x5", font_size=35)
+        l3_dim.set_color(GREY_B)
+        l3_dim.next_to(l3_label, DOWN, buff=0.15)
+        
+        l3_rf = Text("RF = 5", font_size=35, weight=BOLD)
+        l3_rf.next_to(l3_grid, DOWN, buff=0.42)
+        
+        # Arrows
+        arr1 = Arrow(l1_grid.get_right() + RIGHT * 0.15, l2_grid.get_left() + LEFT * 0.15,
+                    buff=0.05, stroke_width=2)
+        arr1.set_color(WHITE)
+        
+        arr2 = Arrow(l2_grid.get_right() + RIGHT * 0.15, l3_grid.get_left() + LEFT * 0.15,
+                    buff=0.05, stroke_width=2)
+        arr2.set_color(WHITE)
+        
+        k1 = Text("3x3", font_size=25, weight=BOLD)
+        k1.set_color(GOLD)
+        k1.next_to(arr1, UP, buff=0.12)
+        
+        k2 = Text("3x3", font_size=25, weight=BOLD)
+        k2.set_color(GOLD)
+        k2.next_to(arr2, UP, buff=0.12)
+        
+        # Animate layers
+        self.play(
+            LaggedStartMap(FadeIn, l1_grid, lag_ratio=0.003),
+            FadeIn(l1_label), FadeIn(l1_dim), FadeIn(l1_rf),
+            run_time=0.5
+        )
+        self.play(
+            GrowArrow(arr1), FadeIn(k1),
+            LaggedStartMap(FadeIn, l2_grid, lag_ratio=0.003),
+            FadeIn(l2_label), FadeIn(l2_dim), FadeIn(l2_rf),
+            run_time=0.5
+        )
+        self.play(
+            GrowArrow(arr2), FadeIn(k2),
+            LaggedStartMap(FadeIn, l3_grid, lag_ratio=0.003),
+            FadeIn(l3_label), FadeIn(l3_dim), FadeIn(l3_rf),
+            run_time=0.5
+        )
+        
+        self.wait(0.6)
+
+
+
+        # ==========================================
+        # HIGHLIGHT RFs - NO LINES
+        # ==========================================
+        
+        # Output pixel
+        l3_highlight = Square(side_length=lcell)
+        l3_highlight.set_fill(GOLD, opacity=0.9)
+        l3_highlight.set_stroke(WHITE, width=2)
+        l3_highlight.move_to(l3_cells[(2, 2)].get_center())
+        
+        # L2 RF: 3x3
+        l2_rf_cells = VGroup()
+        for di in range(3):
+            for dj in range(3):
+                cell = Square(side_length=lcell)
+                cell.set_fill(CORAL, opacity=0.7)
+                cell.set_stroke(WHITE, width=1.2)
+                cell.move_to(l2_cells[(2 + di, 2 + dj)].get_center())
+                l2_rf_cells.add(cell)
+        
+        l2_rf_border = Square(side_length=lcell * 3 + 0.03)
+        l2_rf_border.set_stroke(CORAL, width=2)
+        l2_rf_border.set_fill(opacity=0)
+        l2_rf_border.move_to(l2_cells[(3, 3)].get_center())
+        
+        # L1 RF: 5x5
+        l1_rf_cells = VGroup()
+        for di in range(5):
+            for dj in range(5):
+                cell = Square(side_length=lcell)
+                cell.set_fill(CORAL, opacity=0.5)
+                cell.set_stroke(WHITE, width=0.8)
+                cell.move_to(l1_cells[(2 + di, 2 + dj)].get_center())
+                l1_rf_cells.add(cell)
+        
+        l1_rf_border = Square(side_length=lcell * 5 + 0.03)
+        l1_rf_border.set_stroke(CORAL, width=2)
+        l1_rf_border.set_fill(opacity=0)
+        l1_rf_border.move_to(l1_cells[(4, 4)].get_center())
+        
+        # Animate - NO LINES
+        self.play(FadeIn(l3_highlight, scale=1.2), run_time=0.4)
+        
+        self.play(
+            LaggedStartMap(FadeIn, l2_rf_cells, lag_ratio=0.02),
+            ShowCreation(l2_rf_border),
+            run_time=0.5
+        )
+        
+        self.play(
+            LaggedStartMap(FadeIn, l1_rf_cells, lag_ratio=0.008),
+            ShowCreation(l1_rf_border),
+            run_time=0.5
+        )
+        
+        self.wait(0.8)
+        
+        # ==========================================
+        # MOVE OUTPUT PIXEL - SHOW RF MOVEMENT
+        # ==========================================
+        
+        # Define positions to move through (row, col) in output layer
+        # Each position shows how the RF cascades back through layers
+        output_positions = [(0, 0), (0, 4), (4, 0), (4, 4), (2, 2)]
+        
+        for out_row, out_col in output_positions:
+            # Calculate new centers
+            new_l3_center = l3_cells[(out_row, out_col)].get_center()
+            
+            # L2 RF center: output position maps to center of 3x3 in L2
+            # The output (out_row, out_col) corresponds to L2 cells starting at (out_row, out_col)
+            l2_rf_start_row = out_row
+            l2_rf_start_col = out_col
+            new_l2_rf_center = l2_cells[(l2_rf_start_row + 1, l2_rf_start_col + 1)].get_center()
+            
+            # L1 RF center: each L2 cell has 3x3 RF, so 3x3 L2 region covers 5x5 L1 region
+            # The 5x5 starts at (out_row, out_col) in L1
+            l1_rf_start_row = out_row
+            l1_rf_start_col = out_col
+            new_l1_rf_center = l1_cells[(l1_rf_start_row + 2, l1_rf_start_col + 2)].get_center()
+            
+            # Create new RF cell groups for L2
+            new_l2_rf_cells = VGroup()
+            for di in range(3):
+                for dj in range(3):
+                    cell = Square(side_length=lcell)
+                    cell.set_fill(CORAL, opacity=0.7)
+                    cell.set_stroke(WHITE, width=1.2)
+                    cell.move_to(l2_cells[(l2_rf_start_row + di, l2_rf_start_col + dj)].get_center())
+                    new_l2_rf_cells.add(cell)
+            
+            # Create new RF cell groups for L1
+            new_l1_rf_cells = VGroup()
+            for di in range(5):
+                for dj in range(5):
+                    cell = Square(side_length=lcell)
+                    cell.set_fill(CORAL, opacity=0.5)
+                    cell.set_stroke(WHITE, width=0.8)
+                    cell.move_to(l1_cells[(l1_rf_start_row + di, l1_rf_start_col + dj)].get_center())
+                    new_l1_rf_cells.add(cell)
+            
+            # Animate all movements together
+            self.play(
+                l3_highlight.animate.move_to(new_l3_center),
+                l2_rf_border.animate.move_to(new_l2_rf_center),
+                Transform(l2_rf_cells, new_l2_rf_cells),
+                l1_rf_border.animate.move_to(new_l1_rf_center),
+                Transform(l1_rf_cells, new_l1_rf_cells),
+                run_time=0.5
+            )
+            self.wait(1.25)
+        
+        self.wait(2)
+
+        self.camera.frame.save_state()
+
+        formula_title = Text("Formula", font_size=60, weight=BOLD)
+        formula_title.set_color(GOLD)
+        formula_title.shift(RIGHT*16+UP*2.2)
+        
+        formula = Tex(
+            r"RF_l = 1 + \sum_{i=1}^{l} (K_i - 1) \times \prod_{j=1}^{i-1} S_j",
+            font_size=80
+        )
+        formula.set_color(WHITE)
+        formula.next_to(formula_title, DOWN, buff=1.195).shift(DOWN*0.6)
+        
+        self.play(Write(formula_title), Write(formula), self.camera.frame.animate.shift(RIGHT*16),run_time=0.6)
+        rect = SurroundingRectangle(formula, color=RED, stroke_width=6).scale(1.1)
+        self.play(ShowCreation(rect), run_time=0.6)
+
+        self.wait(2)
+
+        self.play(FadeOut(formula_title), FadeOut(formula), FadeOut(rect), self.camera.frame.animate.restore(), run_time=0.6)
+        self.wait(1)
+
+
+        # ==========================================
+        # FEATURE HIERARCHY EXPLANATION
+        # ==========================================
+        
+        part2 = VGroup(
+            l1_grid, l1_label, l1_dim, l1_rf, l1_rf_cells, l1_rf_border,
+            l2_grid, l2_label, l2_dim, l2_rf, l2_rf_cells, l2_rf_border,
+            l3_grid, l3_label, l3_dim, l3_rf, l3_highlight,
+            arr1, arr2, k1, k2,
+            formula_title, formula,
+            section2
+        )
+        
+        self.play(FadeOut(part2), run_time=0.5)
+        
+        # Feature hierarchy section
+        feature_title = Text("Why Receptive Field Matters", font_size=42, weight=BOLD)
+        feature_title.set_color(WHITE)
+        feature_title.to_edge(UP, buff=0.45).shift(DOWN)
+        
+        self.play(Write(feature_title), run_time=0.5)
+
+        self.wait(1.5)
+
+        # Create layer visualization
+        layer_box_w = 3.2
+        layer_box_h = 1.9
+        
+        # Early layer
+        early_box = RoundedRectangle(width=layer_box_w, height=layer_box_h, corner_radius=0.1)
+        early_box.set_fill(BLUE, opacity=0.2)
+        early_box.set_stroke(BLUE, width=2)
+        early_box.move_to(LEFT * 4.8 + DOWN * 1.2)
+        
+        early_title = Text("Early Layers", font_size=30, weight=BOLD)
+        early_title.set_color(BLUE)
+        early_title.next_to(early_box, UP, buff=0.3)
+        
+        early_rf = Text("Small RF", font_size=20)
+        early_rf.set_color(GREY_A)
+        early_rf.move_to(early_box.get_top() + DOWN * 0.38)
+        
+        early_features = VGroup(
+            Text("• Edges", font_size=20),
+            Text("• Corners", font_size=20),
+            Text("• Simple textures", font_size=20),
+        )
+        early_features.arrange(DOWN, aligned_edge=LEFT, buff=0.1)
+        early_features.set_color(GREY_B)
+        early_features.next_to(early_rf, DOWN, buff=0.18)
+        
+        # Middle layer
+        mid_box = RoundedRectangle(width=layer_box_w, height=layer_box_h, corner_radius=0.1)
+        mid_box.set_fill(MINT, opacity=0.2)
+        mid_box.set_stroke(MINT, width=2)
+        mid_box.move_to(DOWN * 1.2)
+        
+        mid_title = Text("Middle Layers", font_size=30, weight=BOLD)
+        mid_title.set_color(MINT)
+        mid_title.next_to(mid_box, UP, buff=0.3)
+        
+        mid_rf = Text("Medium RF", font_size=20)
+        mid_rf.set_color(GREY_A)
+        mid_rf.move_to(mid_box.get_top() + DOWN * 0.38)
+        
+        mid_features = VGroup(
+            Text("• Shapes", font_size=20),
+            Text("• Patterns", font_size=20),
+            Text("• Object parts", font_size=20),
+        )
+        mid_features.arrange(DOWN, aligned_edge=LEFT, buff=0.1)
+        mid_features.set_color(GREY_B)
+        mid_features.next_to(mid_rf, DOWN, buff=0.18)
+        
+        # Deep layer
+        deep_box = RoundedRectangle(width=layer_box_w, height=layer_box_h, corner_radius=0.1)
+        deep_box.set_fill(LAVENDER, opacity=0.2)
+        deep_box.set_stroke(LAVENDER, width=2)
+        deep_box.move_to(RIGHT * 4.8 + DOWN * 1.2)
+        
+        deep_title = Text("Deep Layers", font_size=30, weight=BOLD)
+        deep_title.set_color(LAVENDER)
+        deep_title.next_to(deep_box, UP, buff=0.3)
+        
+        deep_rf = Text("Large RF", font_size=20)
+        deep_rf.set_color(GREY_A)
+        deep_rf.move_to(deep_box.get_top() + DOWN * 0.38)
+        
+        deep_features = VGroup(
+            Text("• Full objects", font_size=20),
+            Text("• Faces", font_size=20),
+            Text("• Semantic content", font_size=20),
+        )
+        deep_features.arrange(DOWN, aligned_edge=LEFT, buff=0.1)
+        deep_features.set_color(GREY_B)
+        deep_features.next_to(deep_rf, DOWN, buff=0.18)
+        
+        # Arrows between boxes
+        arr_1 = Arrow(early_box.get_right(), mid_box.get_left(), buff=0.18, stroke_width=2)
+        arr_1.set_color(WHITE)
+        arr_2 = Arrow(mid_box.get_right(), deep_box.get_left(), buff=0.18, stroke_width=2)
+        arr_2.set_color(WHITE)
+        
+        # Animate
+        self.play(
+            FadeIn(early_box), FadeIn(early_title),
+            FadeIn(early_rf), FadeIn(early_features),
+            run_time=0.5
+        )
+        self.play(
+            GrowArrow(arr_1),
+            FadeIn(mid_box), FadeIn(mid_title),
+            FadeIn(mid_rf), FadeIn(mid_features),
+            run_time=0.5
+        )
+        self.play(
+            GrowArrow(arr_2),
+            FadeIn(deep_box), FadeIn(deep_title),
+            FadeIn(deep_rf), FadeIn(deep_features),
+            run_time=0.5
+        )
+        
+        # Key insight
+        insight = Tex(
+            r"Larger \ receptive \ field  \rightarrow Can \ detect \ more \ complex, \ global \ features",
+            font_size=43,
+        )
+        insight.set_color(GOLD)
+        insight.to_edge(DOWN, buff=0.37)
+        
+        self.play(FadeIn(insight, shift=UP * 0.2), run_time=0.5)
+        
+        self.wait(3)
+
+
+
+        # ==========================================
+        # SUMMARY
+        # ==========================================
+        
+        self.play(
+            FadeOut(VGroup(
+                feature_title,
+                early_box, early_title, early_rf, early_features,
+                mid_box, mid_title, mid_rf, mid_features,
+                deep_box, deep_title, deep_rf, deep_features,
+                arr_1, arr_2, insight
+            )),
+            run_time=0.5
+        )
+        
+        # Final summary
+        summary = Text("Summary", font_size=60, weight=BOLD)
+        summary.set_color(GOLD)
+        summary.to_edge(UP, buff=0.15).shift(DOWN*0.9999)
+        
+        self.play(Write(summary), run_time=0.4)
+        
+        # Formula
+        final_formula = Tex(
+            r"RF_l = 1 + \sum_{i=1}^{l} (K_i - 1) \times \prod_{j=1}^{i-1} S_j",
+            font_size=68
+        )
+        final_formula.set_color(WHITE)
+        final_formula.next_to(summary, DOWN, buff=0.95)
+        
+        self.play(Write(final_formula), run_time=0.5)
+        
+        # Points
+        points = VGroup(
+            Text("RF = input region affecting one output pixel", font_size=30),
+            Text("Stacking 3x3 kernels grows RF efficiently", font_size=30),
+            Text("Early layers: small RF: edges, textures", font_size=30),
+            Text("Deep layers: large RF: objects, semantics", font_size=30),
+        )
+        points.arrange(DOWN, aligned_edge=LEFT, buff=0.199)
+        points.next_to(final_formula, DOWN, buff=0.97)
+        
+        
+        for i in range(4):
+            self.play(Write(points[i]))
+            self.wait(1.5)
+        
+        self.wait(3)
+
+
 PURE_RED = "#FF0000"
 FEATURE_COLOR = "#DA1F1F"
 
