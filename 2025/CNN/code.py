@@ -4,6 +4,118 @@ from PIL import Image, ImageFilter, ImageOps
 import os
 
 
+class pool_example(Scene):
+    
+    def construct(self):
+        
+        self.camera.frame.shift(LEFT*0.75)
+
+        # ==========================================
+        # Generate pooled images from cat.jpeg
+        # ==========================================
+        
+        img = Image.open("cat.jpeg")
+        img_gray = img.convert("L")
+        img_array = np.array(img_gray)
+        
+        pool_size = 4
+        h, w = img_array.shape
+        new_h, new_w = h // pool_size, w // pool_size
+        
+        # MAX POOLING
+        max_pooled = np.zeros((new_h, new_w), dtype=np.uint8)
+        for i in range(new_h):
+            for j in range(new_w):
+                block = img_array[i*pool_size:(i+1)*pool_size, j*pool_size:(j+1)*pool_size]
+                max_pooled[i, j] = np.max(block)
+        max_pooled_img = Image.fromarray(max_pooled)
+        max_pooled_img = max_pooled_img.resize(img_gray.size, Image.NEAREST)
+        max_pooled_img.save("cat_maxpool.png")
+        
+        # AVERAGE POOLING
+        avg_pooled = np.zeros((new_h, new_w), dtype=np.uint8)
+        for i in range(new_h):
+            for j in range(new_w):
+                block = img_array[i*pool_size:(i+1)*pool_size, j*pool_size:(j+1)*pool_size]
+                avg_pooled[i, j] = np.mean(block).astype(np.uint8)
+        avg_pooled_img = Image.fromarray(avg_pooled)
+        avg_pooled_img = avg_pooled_img.resize(img_gray.size, Image.NEAREST)
+        avg_pooled_img.save("cat_avgpool.png")
+        
+        # ==========================================
+        # Show original cat image
+        # ==========================================
+        
+        cat_img = ImageMobject("cat.jpeg")
+        cat_img.set_height(4.5)
+        cat_img.move_to(LEFT * 4)
+        
+        cat_border = SurroundingRectangle(cat_img, color=WHITE, stroke_width=4, buff=0.05)
+        cat_label = Text("Original Image", font_size=42, weight=BOLD)
+        cat_label.next_to(cat_img, DOWN, buff=0.45)
+        
+        self.play(FadeIn(cat_img), ShowCreation(cat_border))
+        self.play(Write(cat_label))
+        self.wait(1)
+        
+        # ==========================================
+        # Max Pooling (top-right)
+        # ==========================================
+        
+        MAXPOOL_COLOR = ORANGE
+        
+        maxpool_img = ImageMobject("cat_maxpool.png")
+        maxpool_img.set_height(2.0)
+        maxpool_img.move_to(RIGHT * 3.76 + UP * 1.5)
+        maxpool_border = SurroundingRectangle(maxpool_img, color=MAXPOOL_COLOR, stroke_width=3, buff=0.05)
+        maxpool_label = Text("Max Pooling", font_size=32, weight=BOLD).set_color(MAXPOOL_COLOR)
+        maxpool_label.next_to(maxpool_img, UP, buff=0.35)
+        
+        arrow_maxpool = Arrow(
+            cat_border.get_right(),
+            maxpool_border.get_left(),
+            buff=0.15,
+            stroke_width=4
+        ).set_color(MAXPOOL_COLOR)
+        
+        self.play(GrowArrow(arrow_maxpool))
+        self.play(
+            FadeIn(maxpool_img),
+            ShowCreation(maxpool_border),
+            Write(maxpool_label),
+            run_time=0.8
+        )
+        self.wait(0.5)
+        
+        # ==========================================
+        # Average Pooling (bottom-right)
+        # ==========================================
+        
+        AVGPOOL_COLOR = PURPLE
+        
+        avgpool_img = ImageMobject("cat_avgpool.png")
+        avgpool_img.set_height(2.0)
+        avgpool_img.move_to(RIGHT * 3.76 + DOWN * 1.5)
+        avgpool_border = SurroundingRectangle(avgpool_img, color=AVGPOOL_COLOR, stroke_width=3, buff=0.05)
+        avgpool_label = Text("Avg Pooling", font_size=32, weight=BOLD).set_color(AVGPOOL_COLOR)
+        avgpool_label.next_to(avgpool_img, DOWN, buff=0.35)
+        
+        arrow_avgpool = Arrow(
+            cat_border.get_right(),
+            avgpool_border.get_left(),
+            buff=0.15,
+            stroke_width=4
+        ).set_color(AVGPOOL_COLOR)
+        
+        self.play(GrowArrow(arrow_avgpool))
+        self.play(
+            FadeIn(avgpool_img),
+            ShowCreation(avgpool_border),
+            Write(avgpool_label),
+            run_time=0.8
+        )
+        self.wait(2)
+
 class Dilation(Scene):
     """
     Dilated Convolution Visualization - Enhanced
