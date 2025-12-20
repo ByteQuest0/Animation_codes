@@ -575,21 +575,278 @@ class ReceptiveField(Scene):
         self.play(FadeOut(formula_title), FadeOut(formula), FadeOut(rect), self.camera.frame.animate.restore(), run_time=0.6)
         self.wait(1)
 
-
         # ==========================================
-        # FEATURE HIERARCHY EXPLANATION
+        # STRIDE DEMONSTRATION - SHOW ONE AT A TIME
         # ==========================================
         
+        # Clear previous content
         part2 = VGroup(
             l1_grid, l1_label, l1_dim, l1_rf, l1_rf_cells, l1_rf_border,
             l2_grid, l2_label, l2_dim, l2_rf, l2_rf_cells, l2_rf_border,
             l3_grid, l3_label, l3_dim, l3_rf, l3_highlight,
             arr1, arr2, k1, k2,
-            formula_title, formula,
             section2
         )
-        
         self.play(FadeOut(part2), run_time=0.5)
+        
+        stride_title = Text("Effect of Stride on Receptive Field", font_size=38, weight=BOLD)
+        stride_title.set_color(WHITE)
+        stride_title.to_edge(UP, buff=0.45).shift(DOWN*0.69)
+        
+        self.play(FadeIn(stride_title), run_time=0.4)
+        
+        scell = 0.5
+        
+        # ==========================================
+        # FIRST: SHOW STRIDE = 1 (CENTERED)
+        # ==========================================
+
+        s1_title = Text("Stride = 1", font_size=42, weight=BOLD)
+        s1_title.set_color(MINT)
+        s1_title.move_to(UP * 1.5)
+        
+        # Input 7x7
+        s1_input_grid = VGroup()
+        for i in range(7):
+            for j in range(7):
+                cell = Square(side_length=scell)
+                cell.set_fill(BLUE, opacity=0.12)
+                cell.set_stroke(BLUE, width=0.8)
+                cell.move_to(RIGHT * (j - 3) * scell + DOWN * (i - 3) * scell)
+                s1_input_grid.add(cell)
+        s1_input_grid.move_to(LEFT * 4.5 + DOWN * 1.32)
+        
+        s1_input_label = Text("Input: 7x7", font_size=40, weight=BOLD)
+        s1_input_label.set_color(BLUE)
+        s1_input_label.next_to(s1_input_grid, DOWN, buff=0.39)
+        
+        # Layer 1 output 5x5
+        s1_layer1_grid = VGroup()
+        for i in range(5):
+            for j in range(5):
+                cell = Square(side_length=scell)
+                cell.set_fill(MINT, opacity=0.12)
+                cell.set_stroke(MINT, width=0.8)
+                cell.move_to(RIGHT * (j - 2) * scell + DOWN * (i - 2) * scell)
+                s1_layer1_grid.add(cell)
+        s1_layer1_grid.move_to(DOWN * 1.32 + RIGHT*1)
+        
+        s1_layer1_label = Text("5x5", font_size=40)
+        s1_layer1_label.set_color(MINT)
+        s1_layer1_label.next_to(s1_layer1_grid, DOWN, buff=0.39)
+        
+        s1_rf1 = Text("RF = 3", font_size=26, weight=BOLD)
+        s1_rf1.set_color(GOLD)
+        s1_rf1.next_to(s1_layer1_grid, UP, buff=0.3)
+        
+        # Layer 2 output 3x3
+        s1_layer2_grid = VGroup()
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=scell)
+                cell.set_fill(LAVENDER, opacity=0.12)
+                cell.set_stroke(LAVENDER, width=0.8)
+                cell.move_to(RIGHT * (j - 1) * scell + DOWN * (i - 1) * scell)
+                s1_layer2_grid.add(cell)
+        s1_layer2_grid.move_to(RIGHT * 5.34 + DOWN * 1.32)
+        
+        s1_layer2_label = Text("3x3", font_size=40)
+        s1_layer2_label.set_color(LAVENDER)
+        s1_layer2_label.next_to(s1_layer2_grid, DOWN, buff=0.39)
+        
+        s1_rf2 = Text("RF = 5", font_size=26, weight=BOLD)
+        s1_rf2.set_color(GOLD)
+        s1_rf2.next_to(s1_layer2_grid, UP, buff=0.3)
+        
+        # Arrows
+        s1_arrow1 = Arrow(s1_input_grid.get_right() + RIGHT*0.15, s1_layer1_grid.get_left() + LEFT*0.15, buff=0.05, stroke_width=2)
+        s1_arrow1.set_color(WHITE)
+        s1_k1 = Text("3x3, s=1", font_size=30, weight=BOLD)
+        s1_k1.set_color(GOLD)
+        s1_k1.next_to(s1_arrow1, UP, buff=0.1)
+        
+        s1_arrow2 = Arrow(s1_layer1_grid.get_right() + RIGHT*0.15, s1_layer2_grid.get_left() + LEFT*0.15, buff=0.05, stroke_width=2)
+        s1_arrow2.set_color(WHITE)
+        s1_k2 = Text("3x3, s=1", font_size=30, weight=BOLD)
+        s1_k2.set_color(GOLD)
+        s1_k2.next_to(s1_arrow2, UP, buff=0.1)
+        
+        # Animate stride=1
+        self.play(Write(s1_title), run_time=0.3)
+        self.play(
+            LaggedStartMap(FadeIn, s1_input_grid, lag_ratio=0.005),
+            FadeIn(s1_input_label),
+            run_time=0.5
+        )
+        self.play(GrowArrow(s1_arrow1), FadeIn(s1_k1), run_time=0.3)
+        self.play(
+            LaggedStartMap(FadeIn, s1_layer1_grid, lag_ratio=0.01),
+            FadeIn(s1_layer1_label), FadeIn(s1_rf1),
+            run_time=0.5
+        )
+        self.play(GrowArrow(s1_arrow2), FadeIn(s1_k2), run_time=0.3)
+        self.play(
+            LaggedStartMap(FadeIn, s1_layer2_grid, lag_ratio=0.02),
+            FadeIn(s1_layer2_label), FadeIn(s1_rf2),
+            run_time=0.5
+        )
+
+        
+        # Observation for stride=1
+        s1_obs = Tex(r"RF  \ grows \ slower! \ (3 \rightarrow 5)", font_size=38, ).set_color(RED_B)
+        s1_obs.move_to(stride_title).scale(1.8)
+        
+        self.play(FadeIn(s1_obs), FadeOut(stride_title), run_time=0.4)
+        self.wait(2)
+        
+        # Fade out stride=1
+        s1_group = VGroup(s1_title, s1_input_grid, s1_input_label, 
+                          s1_layer1_grid, s1_layer1_label, s1_rf1,
+                          s1_layer2_grid, s1_layer2_label, s1_rf2,
+                          s1_arrow1, s1_k1, s1_arrow2, s1_k2, s1_obs)
+        self.play(FadeOut(s1_group), run_time=0.5)
+        
+        # ==========================================
+        # SECOND: SHOW STRIDE = 2 (CENTERED)
+        # ==========================================
+        
+        s2_title = Text("Stride = 2", font_size=50, weight=BOLD)
+        s2_title.set_color(CORAL)
+        s2_title.move_to(UP * 1.5)
+        
+        # Input 7x7
+        s2_input_grid = VGroup()
+        for i in range(7):
+            for j in range(7):
+                cell = Square(side_length=scell)
+                cell.set_fill(BLUE, opacity=0.12)
+                cell.set_stroke(BLUE, width=0.8)
+                cell.move_to(RIGHT * (j - 3) * scell + DOWN * (i - 3) * scell)
+                s2_input_grid.add(cell)
+        s2_input_grid.move_to(LEFT * 4.5 + DOWN * 1.32)
+        
+        s2_input_label = Text("Input: 7x7", font_size=40, weight=BOLD)
+        s2_input_label.set_color(BLUE)
+        s2_input_label.next_to(s2_input_grid, DOWN, buff=0.39)
+        
+        # Layer 1 output 3x3 (stride=2: floor((7-3)/2)+1 = 3)
+        s2_layer1_grid = VGroup()
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=scell)
+                cell.set_fill(CORAL, opacity=0.12)
+                cell.set_stroke(CORAL, width=0.8)
+                cell.move_to(RIGHT * (j - 1) * scell + DOWN * (i - 1) * scell)
+                s2_layer1_grid.add(cell)
+        s2_layer1_grid.move_to(DOWN * 1.32 + RIGHT*1)
+        
+        s2_layer1_label = Text("3x3", font_size=40)
+        s2_layer1_label.set_color(CORAL)
+        s2_layer1_label.next_to(s2_layer1_grid, DOWN, buff=0.39)
+        
+        s2_rf1 = Text("RF = 3", font_size=26, weight=BOLD)
+        s2_rf1.set_color(GOLD)
+        s2_rf1.next_to(s2_layer1_grid, UP, buff=0.3)
+        
+        # Layer 2 output 1x1 (stride=1: 3-3+1 = 1)
+        s2_layer2_grid = VGroup()
+        cell = Square(side_length=scell * 1.5)
+        cell.set_fill(LAVENDER, opacity=0.12)
+        cell.set_stroke(LAVENDER, width=0.8)
+        s2_layer2_grid.add(cell)
+        s2_layer2_grid.move_to(RIGHT * 5.34 + DOWN * 1.32)
+        
+        s2_layer2_label = Text("1x1", font_size=40)
+        s2_layer2_label.set_color(LAVENDER)
+        s2_layer2_label.next_to(s2_layer2_grid, DOWN, buff=0.39)
+        
+        s2_rf2 = Text("RF = 7", font_size=26, weight=BOLD)
+        s2_rf2.set_color(CORAL)
+        s2_rf2.next_to(s2_layer2_grid, UP, buff=0.3)
+        
+        # Arrows
+        s2_arrow1 = Arrow(s2_input_grid.get_right() + RIGHT*0.15, s2_layer1_grid.get_left() + LEFT*0.15, buff=0.05, stroke_width=2)
+        s2_arrow1.set_color(WHITE)
+        s2_k1 = Text("3x3, s=2", font_size=30, weight=BOLD)
+        s2_k1.set_color(GOLD)
+        s2_k1.next_to(s2_arrow1, UP, buff=0.1)
+        
+        s2_arrow2 = Arrow(s2_layer1_grid.get_right() + RIGHT*0.15, s2_layer2_grid.get_left() + LEFT*0.15, buff=0.05, stroke_width=2)
+        s2_arrow2.set_color(WHITE)
+        s2_k2 = Text("3x3, s=1", font_size=30, weight=BOLD)
+        s2_k2.set_color(GOLD)
+        s2_k2.next_to(s2_arrow2, UP, buff=0.1)
+        
+        # Animate stride=2
+        self.play(FadeIn(s2_title), run_time=0.3)
+        self.play(
+            LaggedStartMap(FadeIn, s2_input_grid, lag_ratio=0.005),
+            FadeIn(s2_input_label),
+            run_time=0.5
+        )
+        self.play(GrowArrow(s2_arrow1), FadeIn(s2_k1), run_time=0.3)
+        self.play(
+            LaggedStartMap(FadeIn, s2_layer1_grid, lag_ratio=0.02),
+            FadeIn(s2_layer1_label), FadeIn(s2_rf1),
+            run_time=0.5
+        )
+        self.play(GrowArrow(s2_arrow2), FadeIn(s2_k2), run_time=0.3)
+        self.play(
+            LaggedStartMap(FadeIn, s2_layer2_grid, lag_ratio=0.02),
+            FadeIn(s2_layer2_label), FadeIn(s2_rf2),
+            run_time=0.5
+        )
+        
+        # Observation for stride=2
+        s2_obs = Tex(r"RF  \ grows \ much \ faster! \ (3 \rightarrow 7)", font_size=38, )
+        s2_obs.set_color(GREEN_B)
+        s2_obs.move_to(stride_title).scale(1.8)
+        
+        self.play(FadeIn(s2_obs), run_time=0.4)
+        self.wait(2)
+
+
+        # Key insight box
+        insight_box = RoundedRectangle(width=10, height=1.5, corner_radius=0.1)
+        insight_box.set_fill(BLACK, opacity=0.96)
+        insight_box.set_stroke(GOLD, width=2)
+        insight_box.to_edge(DOWN, buff=0.3)
+        
+        insight_text = VGroup(
+            Text("Stride > 1 accelerates RF growth", font_size=26, weight=BOLD),
+            Text("because each layer covers more input space", font_size=22),
+        )
+        insight_text[0].set_color(GOLD)
+        insight_text[1].set_color(GREY_A)
+        insight_text.arrange(DOWN, buff=0.15)
+        insight_text.move_to(insight_box.get_center())
+
+        a = VGroup(insight_box, insight_text).move_to(Group(stride_title, s2_title))
+
+        a.scale(1.3)
+        
+        self.play(FadeOut(s2_obs), FadeOut(s2_title),run_time=0.2)
+        self.play(FadeIn(a), run_time=0.5)
+        
+        self.wait(2)
+
+        
+        
+        # Clean up stride section
+        stride_section = VGroup(
+            s2_input_grid, s2_input_label,
+            s2_layer1_grid, s2_layer1_label, s2_rf1,
+            s2_layer2_grid, s2_layer2_label, s2_rf2,
+            s2_arrow1, s2_k1, s2_arrow2, s2_k2,
+            insight_box, insight_text
+        )
+        
+        self.play(FadeOut(stride_section), run_time=0.5)
+
+
+        # ==========================================
+        # FEATURE HIERARCHY EXPLANATION
+        # ==========================================
         
         # Feature hierarchy section
         feature_title = Text("Why Receptive Field Matters", font_size=42, weight=BOLD)
@@ -740,7 +997,7 @@ class ReceptiveField(Scene):
             font_size=68
         )
         final_formula.set_color(WHITE)
-        final_formula.next_to(summary, DOWN, buff=0.95)
+        final_formula.next_to(summary, DOWN, buff=0.35)
         
         self.play(Write(final_formula), run_time=0.5)
         
@@ -748,18 +1005,22 @@ class ReceptiveField(Scene):
         points = VGroup(
             Text("RF = input region affecting one output pixel", font_size=30),
             Text("Stacking 3x3 kernels grows RF efficiently", font_size=30),
-            Text("Early layers: small RF: edges, textures", font_size=30),
-            Text("Deep layers: large RF: objects, semantics", font_size=30),
+            Text("Stride > 1 accelerates RF growth", font_size=30),
+            Text("Early layers: small RF → edges, textures", font_size=30),
+            Text("Deep layers: large RF → objects, semantics", font_size=30),
         )
         points.arrange(DOWN, aligned_edge=LEFT, buff=0.199)
-        points.next_to(final_formula, DOWN, buff=0.97)
+        points.next_to(final_formula, DOWN, buff=0.77)
         
         
-        for i in range(4):
+        for i in range(5):
             self.play(Write(points[i]))
             self.wait(1.5)
         
         self.wait(3)
+        
+        # Clear summary
+        self.play(FadeOut(VGroup(summary, final_formula, points)), run_time=0.5)
 
 
 PURE_RED = "#FF0000"
