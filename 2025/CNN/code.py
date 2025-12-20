@@ -4,6 +4,615 @@ from PIL import Image, ImageFilter, ImageOps
 import os
 
 
+class Dilation(Scene):
+    """
+    Dilated Convolution Visualization - Enhanced
+    1. Show dilation meaning (D=1, D=2, D=3 kernel expansion)
+    2. Show actual convolutions (D=1 then D=2)
+    3. Formulas
+    4. Summary
+    """
+    
+    def construct(self):
+        self.camera.frame.scale(1.2).shift(DOWN*0.5).scale(0.87)
+
+        self.camera.frame.save_state()
+        
+        # Colors
+        GOLD = "#FFD700"
+        CORAL = "#FF6B6B"
+        MINT = "#90EE90"
+        LAVENDER = "#DDA0DD"
+        BLUE = "#6699CC"
+        CYAN = "#00CED1"
+        
+        # ==========================================
+        # INTRO
+        # ==========================================
+        
+        title = Text("Dilated Convolution", font_size=70, weight=BOLD)
+        title.set_color(WHITE)
+        title.move_to(UP * 1.2)
+        
+
+        self.play(Write(title), run_time=0.7)
+        self.wait(1.5)
+        
+        self.play(FadeOut(VGroup(title)), run_time=0.4)
+        
+        # ==========================================
+        # PART 1: WHAT IS DILATION? (D=1, D=2, D=3) - Using Transform
+        # ==========================================
+        
+        section1 = Text("What is Dilation?", font_size=52, weight=BOLD)
+        section1.set_color(RED_A)
+        section1.to_edge(UP, buff=0.35).shift(DOWN*0.65)
+        
+        explain = Text("Dilation = spacing between kernel elements", font_size=37, weight=BOLD)
+        explain.set_color(GREEN_A)
+        explain.next_to(section1, DOWN, buff=0.45)
+        
+        self.play(Write(section1), run_time=0.4)
+        self.play(Write(explain), run_time=0.3)
+        
+        kernel_cell = 0.6
+        
+        # ===== D = 1 (Initial) =====
+        d_title = Text("Dilation = 1 (Standard)", font_size=44, weight=BOLD)
+        d_title.set_color(CORAL)
+        d_title.move_to(UP * 0.6)
+        
+        d_kernel = VGroup()
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=kernel_cell)
+                cell.set_fill(CORAL, opacity=0.9)
+                cell.set_stroke(WHITE, width=3)
+                cell.move_to(RIGHT * (j - 1) * kernel_cell + DOWN * (i - 1) * kernel_cell)
+                d_kernel.add(cell)
+        d_kernel.move_to(DOWN * 1.4)
+        
+        d_size = Text("Covers: 3 x 3", font_size=34, weight=BOLD)
+        d_size.set_color(GOLD)
+        d_size.next_to(d_kernel, DOWN, buff=0.5)
+        
+        d_params = Text("Parameters: 9", font_size=38)
+        d_params.set_color(GREY_A)
+        d_params.next_to(d_size, DOWN, buff=0.35)
+        
+        self.play(Write(d_title), run_time=0.35)
+        self.play(LaggedStartMap(FadeIn, d_kernel, lag_ratio=0.06, scale=1.15), run_time=0.6)
+        self.play(FadeIn(d_size), FadeIn(d_params), run_time=0.35)
+        self.wait(1.8)
+
+        
+        # ===== Transform to D = 2 =====
+        d2_title = Text("Dilation = 2", font_size=44, weight=BOLD)
+        d2_title.set_color(MINT)
+        d2_title.move_to(d_title).shift(UP*0.17)
+        
+        d2_kernel_full = VGroup()
+        # 5x5 grid with 3x3 kernel cells and gaps
+        for i in range(5):
+            for j in range(5):
+                cell = Square(side_length=kernel_cell)
+                if i % 2 == 0 and j % 2 == 0:
+                    cell.set_fill(MINT, opacity=0.9)
+                    cell.set_stroke(WHITE, width=3)
+                else:
+                    cell.set_fill(GREY_E, opacity=0.25)
+                    cell.set_stroke(GREY_D, width=1)
+                cell.move_to(RIGHT * (j - 2) * kernel_cell + DOWN * (i - 2) * kernel_cell)
+                d2_kernel_full.add(cell)
+        d2_kernel_full.move_to(DOWN * 1.5)
+        
+        d2_size = Text("Covers: 5 x 5", font_size=34, weight=BOLD)
+        d2_size.set_color(GOLD)
+        d2_size.next_to(d2_kernel_full, DOWN, buff=0.5)
+        
+        d2_params = Text("Parameters: 9 (same!)", font_size=28)
+        d2_params.set_color(GREY_A)
+        d2_params.next_to(d2_size, DOWN, buff=0.35)
+        
+        self.play(
+            Transform(d_title, d2_title),
+            Transform(d_kernel, d2_kernel_full),
+            Transform(d_size, d2_size),
+            Transform(d_params, d2_params),
+            FadeOut(section1),
+            FadeOut(explain),
+            self.camera.frame.animate.shift(DOWN*1.29).scale(0.86),
+            run_time=1.0
+        )
+        self.wait(1.8)
+
+
+        # ===== Transform to D = 3 =====
+        d3_title = Text("Dilation = 3", font_size=44, weight=BOLD)
+        d3_title.set_color(LAVENDER)
+        
+        
+        d3_kernel_full = VGroup()
+        # 7x7 grid with 3x3 kernel cells and gaps
+        cell_size_3 = kernel_cell * 0.85
+        for i in range(7):
+            for j in range(7):
+                cell = Square(side_length=cell_size_3)
+                if i % 3 == 0 and j % 3 == 0:
+                    cell.set_fill(LAVENDER, opacity=0.9)
+                    cell.set_stroke(WHITE, width=3)
+                else:
+                    cell.set_fill(GREY_E, opacity=0.2)
+                    cell.set_stroke(GREY_D, width=0.8)
+                cell.move_to(RIGHT * (j - 3) * cell_size_3 + DOWN * (i - 3) * cell_size_3)
+                d3_kernel_full.add(cell)
+        d3_kernel_full.move_to(DOWN * 1.6)
+
+        d3_title.next_to(d3_kernel_full, UP, buff=0.5)
+        
+        d3_size = Text("Covers: 7 x 7", font_size=34, weight=BOLD)
+        d3_size.set_color(GOLD)
+        d3_size.next_to(d3_kernel_full, DOWN, buff=0.5)
+        
+        d3_params = Text("Parameters: 9 (still same!)", font_size=28)
+        d3_params.set_color(GREY_A)
+        d3_params.next_to(d3_size, DOWN, buff=0.35)
+        
+        self.play(
+            Transform(d_title, d3_title),
+            Transform(d_kernel, d3_kernel_full),
+            Transform(d_size, d3_size),
+            Transform(d_params, d3_params),
+            run_time=1.0
+        )
+        self.wait(1.8)
+
+        
+        # Key insight
+        key_insight = Tex(r"Same \ 9 \ weights \rightarrow \ Larger \ receptive \ field!", font_size=45)
+        key_insight.set_color(GREEN_B)
+        key_insight.next_to(d3_params, DOWN, buff=0.56)
+        
+        self.play(Write(key_insight), self.camera.frame.animate.scale(1.12).shift(DOWN*0.49) ,run_time=0.9)
+        self.wait(2)
+        
+        # Clear Part 1
+        self.play(FadeOut(VGroup(d_title, d_kernel, d_size, d_params, key_insight)), run_time=0.5)
+        
+
+        # ==========================================
+        # PART 2: ACTUAL CONVOLUTION - D=1
+        # ==========================================
+        
+        conv_title = Text("Convolution with Dilation = 1", font_size=46, weight=BOLD)
+        conv_title.set_color(CORAL)
+        conv_title.to_edge(UP, buff=0.35).shift(DOWN*0.65)
+        
+        self.play(Write(conv_title),self.camera.frame.animate.restore() ,run_time=0.4)
+        
+        cell_size = 0.56
+        
+        # Input grid 7x7
+        input_grid = VGroup()
+        input_cells = {}
+        for i in range(7):
+            for j in range(7):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(BLUE, opacity=0.22)
+                cell.set_stroke(BLUE, width=1.5)
+                cell.move_to(RIGHT * (j - 3) * cell_size + DOWN * (i - 3) * cell_size)
+                input_cells[(i, j)] = cell
+                input_grid.add(cell)
+        input_grid.move_to(LEFT * 3.5 + DOWN * 1.0)
+        
+        input_label = Text("Input: 7x7", font_size=40, weight=BOLD)
+        input_label.set_color(BLUE)
+        input_label.next_to(input_grid, DOWN, buff=0.55)
+        
+        # 3x3 Kernel
+        kernel_d1 = VGroup()
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(CORAL, opacity=0.88)
+                cell.set_stroke(WHITE, width=2.5)
+                cell.move_to(input_cells[(1, 1)].get_center() + RIGHT * (j - 1) * cell_size + DOWN * (i - 1) * cell_size)
+                kernel_d1.add(cell)
+        
+        # Output grid 5x5
+        output_d1 = VGroup()
+        output_cells_d1 = {}
+        for i in range(5):
+            for j in range(5):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(GREY_E, opacity=0.08)
+                cell.set_stroke(CORAL, width=1.5)
+                cell.move_to(RIGHT * (j - 2) * cell_size + DOWN * (i - 2) * cell_size)
+                output_cells_d1[(i, j)] = cell
+                output_d1.add(cell)
+        output_d1.move_to(RIGHT * 3.7 + DOWN * 1.0)
+        
+        output_label_d1 = Text("Output: 5x5", font_size=40, weight=BOLD)
+        output_label_d1.set_color(CORAL)
+        output_label_d1.next_to(output_d1, DOWN, buff=0.55)
+        
+        # Arrow
+        arrow_d1 = Arrow(LEFT * 1.2, RIGHT * 2.4, buff=0.1, stroke_width=4)
+        arrow_d1.set_color(WHITE)
+        arrow_d1.move_to(DOWN * 1.0).shift(RIGHT*0.35)
+        
+        kernel_label_d1 = Text("3x3, d=1", font_size=28, weight=BOLD)
+        kernel_label_d1.set_color(GOLD)
+        kernel_label_d1.next_to(arrow_d1, UP, buff=0.18)
+        
+        # RF box
+        rf_box_d1 = RoundedRectangle(width=2.8, height=0.85, corner_radius=0.12)
+        rf_box_d1.set_fill(BLACK, opacity=0.8)
+        rf_box_d1.set_stroke(GOLD, width=2.5)
+        rf_box_d1.next_to(output_d1, UP, buff=0.4)
+        
+        rf_text_d1 = Text("RF = 3x3", font_size=30, weight=BOLD)
+        rf_text_d1.set_color(GOLD)
+        rf_text_d1.move_to(rf_box_d1.get_center())
+        
+        # Animate
+        self.play(
+            LaggedStartMap(FadeIn, input_grid, lag_ratio=0.006),
+            FadeIn(input_label),
+            run_time=0.55
+        )
+        self.play(LaggedStartMap(FadeIn, kernel_d1, lag_ratio=0.04, scale=1.12), run_time=0.4)
+        self.play(GrowArrow(arrow_d1), FadeIn(kernel_label_d1), run_time=0.3)
+        self.play(
+            LaggedStartMap(FadeIn, output_d1, lag_ratio=0.008),
+            FadeIn(output_label_d1),
+            run_time=0.5
+        )
+        
+        # Perform convolution
+        filled_cells_d1 = VGroup()
+        for out_i in range(5):
+            for out_j in range(5):
+                new_center = input_cells[(out_i + 1, out_j + 1)].get_center()
+                
+                out_highlight = Square(side_length=cell_size)
+                out_highlight.set_fill(CORAL, opacity=0.72)
+                out_highlight.set_stroke(WHITE, width=2)
+                out_highlight.move_to(output_cells_d1[(out_i, out_j)].get_center())
+                filled_cells_d1.add(out_highlight)
+                
+                if out_i == 0 and out_j == 0:
+                    self.play(kernel_d1.animate.move_to(new_center), FadeIn(out_highlight), run_time=0.15)
+                else:
+                    self.play(kernel_d1.animate.move_to(new_center), FadeIn(out_highlight), run_time=0.1)
+        
+        self.play(FadeIn(rf_box_d1), FadeIn(rf_text_d1), run_time=0.35)
+        self.wait(1.5)
+        
+
+        # ===== FADE OUT D=1 COMPLETELY =====
+        d1_all = VGroup(
+            conv_title, input_grid, input_label, kernel_d1,
+            output_d1, output_label_d1, arrow_d1, kernel_label_d1,
+            rf_box_d1, rf_text_d1, filled_cells_d1
+        )
+        self.play(FadeOut(d1_all), run_time=0.5)
+        
+        # ==========================================
+        # PART 3: ACTUAL CONVOLUTION - D=2
+        # ==========================================
+        
+        conv_title2 = Text("Convolution with Dilation = 2", font_size=46, weight=BOLD)
+        conv_title2.set_color(MINT)
+        conv_title2.to_edge(UP, buff=0.35).shift(DOWN*0.77)
+        
+        self.play(Write(conv_title2), run_time=0.4)
+        
+        # Input grid 7x7 (fresh)
+        input_grid2 = VGroup()
+        input_cells2 = {}
+        for i in range(7):
+            for j in range(7):
+                cell = Square(side_length=cell_size)
+                cell.set_fill(BLUE, opacity=0.22)
+                cell.set_stroke(BLUE, width=1.5)
+                cell.move_to(RIGHT * (j - 3) * cell_size + DOWN * (i - 3) * cell_size)
+                input_cells2[(i, j)] = cell
+                input_grid2.add(cell)
+        input_grid2.move_to(LEFT * 3.5 + DOWN * 1.0)
+        
+        input_label2 = Text("Input: 7x7", font_size=40, weight=BOLD)
+        input_label2.set_color(BLUE)
+        input_label2.next_to(input_grid2, DOWN, buff=0.65)
+        
+        # Dilated kernel (3x3 with d=2 covers 5x5)
+        def create_dilated_kernel_on_input(base_i, base_j):
+            kernel = VGroup()
+            bg = VGroup()
+            base_center = input_cells2[(base_i + 2, base_j + 2)].get_center()
+            
+            for i in range(5):
+                for j in range(5):
+                    cell = Square(side_length=cell_size)
+                    if i % 2 == 0 and j % 2 == 0:
+                        cell.set_fill(MINT, opacity=0.88)
+                        cell.set_stroke(WHITE, width=2.5)
+                        kernel.add(cell)
+                    else:
+                        cell.set_fill(GREY_E, opacity=0.22)
+                        cell.set_stroke(GREY_D, width=0.8)
+                        bg.add(cell)
+                    cell.move_to(base_center + RIGHT * (j - 2) * cell_size + DOWN * (i - 2) * cell_size)
+            return VGroup(bg, kernel)
+        
+        kernel_d2 = create_dilated_kernel_on_input(0, 0)
+        
+        # Output grid 3x3
+        output_d2 = VGroup()
+        output_cells_d2 = {}
+        for i in range(3):
+            for j in range(3):
+                cell = Square(side_length=cell_size * 1.2)
+                cell.set_fill(GREY_E, opacity=0.08)
+                cell.set_stroke(MINT, width=1.5)
+                cell.move_to(RIGHT * (j - 1) * cell_size * 1.2 + DOWN * (i - 1) * cell_size * 1.2)
+                output_cells_d2[(i, j)] = cell
+                output_d2.add(cell)
+        output_d2.move_to(RIGHT * 3.5 + DOWN * 1.0)
+        
+        output_label_d2 = Text("Output: 3x3", font_size=40, weight=BOLD)
+        output_label_d2.set_color(MINT)
+        output_label_d2.next_to(output_d2, DOWN, buff=0.65)
+        
+        # Arrow
+        arrow_d2 = Arrow(LEFT * 1.2, RIGHT * 2.4, buff=0.1, stroke_width=4)
+        arrow_d2.set_color(WHITE)
+        arrow_d2.move_to(DOWN * 1.0).shift(RIGHT*0.49)
+        
+        kernel_label_d2 = Text("3x3, d=2", font_size=32, weight=BOLD)
+        kernel_label_d2.set_color(GOLD)
+        kernel_label_d2.next_to(arrow_d2, UP, buff=0.18)
+        
+        # RF box
+        rf_box_d2 = RoundedRectangle(width=2.8, height=0.85, corner_radius=0.12)
+        rf_box_d2.set_fill(BLACK, opacity=0.8)
+        rf_box_d2.set_stroke(GOLD, width=2.5)
+        rf_box_d2.next_to(output_d2, UP, buff=0.4)
+        
+        rf_text_d2 = Text("RF = 5x5", font_size=30, weight=BOLD)
+        rf_text_d2.set_color(GOLD)
+        rf_text_d2.move_to(rf_box_d2.get_center())
+        
+        # Animate
+        self.play(
+            LaggedStartMap(FadeIn, input_grid2, lag_ratio=0.006),
+            FadeIn(input_label2),
+            run_time=0.55
+        )
+        self.play(FadeIn(kernel_d2), run_time=0.45)
+        self.play(GrowArrow(arrow_d2), FadeIn(kernel_label_d2), run_time=0.3)
+        self.play(
+            LaggedStartMap(FadeIn, output_d2, lag_ratio=0.015),
+            FadeIn(output_label_d2),
+            run_time=0.45
+        )
+
+
+        
+        # Perform dilated convolution
+        filled_cells_d2 = VGroup()
+        for out_i in range(3):
+            for out_j in range(3):
+                new_kernel = create_dilated_kernel_on_input(out_i, out_j)
+                
+                out_highlight = Square(side_length=cell_size * 1.2)
+                out_highlight.set_fill(MINT, opacity=0.72)
+                out_highlight.set_stroke(WHITE, width=2)
+                out_highlight.move_to(output_cells_d2[(out_i, out_j)].get_center())
+                filled_cells_d2.add(out_highlight)
+                
+                self.play(Transform(kernel_d2, new_kernel), FadeIn(out_highlight), run_time=0.24)
+        
+        self.play(FadeIn(rf_box_d2), FadeIn(rf_text_d2), run_time=0.35)
+        
+        # Key insight
+        insight_box = RoundedRectangle(width=11, height=1.15, corner_radius=0.12)
+        insight_box.set_fill(BLACK, opacity=0.88)
+        insight_box.set_stroke(GOLD, width=3)
+        insight_box.to_edge(DOWN, buff=0.32)
+        
+        insight_text = Tex(r"Same \ 9 \ parameters: \ RF: \ 3 \times 3 \rightarrow 5 \times 5", font_size=42)
+        insight_text.set_color(GOLD)
+        insight_text.move_to(insight_box.get_center())
+
+        a = VGroup(insight_box, insight_text).move_to(conv_title2)
+        
+        self.play(FadeIn(a), FadeOut(conv_title2), run_time=0.5)
+        self.wait(2)
+        
+        # ===== FADE OUT D=2 COMPLETELY =====
+        d2_all = VGroup(
+            input_grid2, input_label2, kernel_d2,
+            output_d2, output_label_d2, arrow_d2, kernel_label_d2,
+            rf_box_d2, rf_text_d2, filled_cells_d2, insight_box, insight_text
+        )
+        self.play(FadeOut(d2_all), run_time=0.5)
+
+        
+        # ==========================================
+        # PART 4: Keff FORMULA
+        # ==========================================
+        
+        keff_title = Text("Effective Kernel Size", font_size=54, weight=BOLD)
+        keff_title.set_color(WHITE)
+        keff_title.to_edge(UP, buff=0.4).shift(DOWN*0.74)
+        
+        self.play(Write(keff_title), run_time=0.4)
+        
+        keff_formula = Tex(
+            r"K_{eff} = K + (K - 1) \times (D - 1)",
+            font_size=68
+        )
+        keff_formula.set_color(WHITE)
+        keff_formula.move_to(UP * 0.2)
+        
+        self.play(Write(keff_formula), run_time=0.65)
+        
+        keff_note = Text("K = kernel size, D = dilation rate", font_size=36)
+        keff_note.set_color(YELLOW_B)
+        keff_note.next_to(keff_formula, DOWN, buff=0.35)
+        
+        self.play(FadeIn(keff_note), run_time=0.3)
+        
+        # Examples
+        ex1 = Tex(r"D=1: \quad K_{eff} = 3 + 2 \times 0 = 3", font_size=54)
+        ex1.set_color(CORAL)
+        ex1.next_to(keff_note, DOWN, buff=0.75)
+        
+        ex2 = Tex(r"D=2: \quad K_{eff} = 3 + 2 \times 1 = 5", font_size=54)
+        ex2.set_color(MINT)
+        ex2.next_to(ex1, DOWN, buff=0.28)
+        
+        ex3 = Tex(r"D=3: \quad K_{eff} = 3 + 2 \times 2 = 7", font_size=54)
+        ex3.set_color(LAVENDER)
+        ex3.next_to(ex2, DOWN, buff=0.28)
+        
+        self.play(Write(ex1), run_time=0.4)
+        self.wait(0.4)
+        self.play(Write(ex2), run_time=0.4)
+        self.wait(0.4)
+        self.play(Write(ex3), run_time=0.4)
+        self.wait(1.8)
+        
+        self.play(FadeOut(VGroup(keff_title, keff_formula, keff_note, ex1, ex2, ex3)), run_time=0.45)
+        
+        # ==========================================
+        # PART 5: RF FORMULA TRANSFORMATIONS
+        # ==========================================
+        
+        rf_title = Text("Receptive Field Formula", font_size=54, weight=BOLD)
+        rf_title.set_color(ORANGE)
+        rf_title.to_edge(UP, buff=0.4).shift(DOWN*0.74)
+        
+        self.play(Write(rf_title), run_time=0.4)
+        
+        # Original RF formula
+        rf_eq1 = Tex(
+            r"RF = 1 + \sum_{i=1}^{L} (K_i - 1) \times \prod_{j=1}^{i-1} S_j",
+            font_size=68
+        )
+        rf_eq1.set_color(WHITE)
+        rf_eq1.move_to(ORIGIN)
+        
+        self.play(Write(rf_eq1), run_time=0.7)
+        
+        note1 = Text("Standard RF formula with kernel K and stride S", font_size=32)
+        note1.set_color(TEAL_B)
+        note1.next_to(rf_eq1, DOWN, buff=0.74)
+        
+        self.play(Write(note1), run_time=0.9)
+        self.wait(1.8)
+        
+        # Transform 1: K -> Keff
+        transform_label = Text("For dilated conv, replace K with K_eff:", font_size=32, weight=BOLD)
+        transform_label.set_color(GOLD)
+        transform_label.to_edge(DOWN, buff=1.3).shift(DOWN*0.5)
+        
+        self.play(Write(transform_label), run_time=0.35)
+        
+        rf_eq2 = Tex(
+            r"RF = 1 + \sum_{i=1}^{L} (K_{eff,i} - 1) \times \prod_{j=1}^{i-1} S_j",
+            font_size=68
+        )
+        rf_eq2.set_color(MINT)
+        rf_eq2.move_to(rf_eq1.get_center())
+        
+        self.play(
+            Transform(rf_eq1, rf_eq2),
+            FadeOut(note1),
+            run_time=0.9
+        )
+        
+        note2 = Text("Using effective kernel size", font_size=35)
+        note2.set_color(MAROON_B)
+        note2.next_to(rf_eq1, DOWN, buff=0.74)
+        
+        self.play(Write(note2), run_time=0.3)
+        self.wait(1.5)
+        
+        # Transform 2: Substitute Keff formula
+        transform_label2 = Text("Substitute K_eff = K + (K-1)(D-1):", font_size=42, weight=BOLD)
+        transform_label2.set_color(GOLD)
+        transform_label2.move_to(transform_label.get_center()).shift(DOWN*0.4)
+        
+        self.play(Transform(transform_label, transform_label2), run_time=0.35)
+        self.wait(1.4)
+        
+        rf_eq3 = Tex(
+            r"RF = 1 + \sum_{i=1}^{L} (K_i - 1) \cdot D_i \times \prod_{j=1}^{i-1} S_j",
+            font_size=68
+        )
+        rf_eq3.set_color(LAVENDER)
+        rf_eq3.move_to(rf_eq1.get_center())
+        
+        self.play(
+            Transform(rf_eq1, rf_eq3),
+            FadeOut(note2),
+            run_time=0.9
+        )
+        
+        note3 = Text("Final formula with dilation rate D!", font_size=43, weight=BOLD)
+        note3.set_color(GOLD)
+        note3.next_to(rf_eq1, DOWN, buff=0.4).shift(DOWN)
+        
+        self.play(FadeIn(note3), FadeOut(transform_label), run_time=0.3)
+        
+        # Highlight
+        highlight = SurroundingRectangle(rf_eq1, color=GOLD, stroke_width=3.5, buff=0.22)
+        self.play(ShowCreation(highlight), run_time=0.45)
+        
+        self.wait(2.2)
+        
+        self.play(FadeOut(VGroup(rf_title, rf_eq1, note3, highlight)), run_time=0.5)
+        
+        # ==========================================
+        # SUMMARY
+        # ==========================================
+        
+        summary_title = Text("Summary", font_size=62, weight=BOLD)
+        summary_title.set_color(GOLD)
+        summary_title.to_edge(UP, buff=0.42).shift(DOWN*0.7)
+        
+        self.play(Write(summary_title), run_time=0.4)
+        
+        final_formula = Tex(r"K_{eff} = K + (K-1)(D-1)", font_size=85)
+        final_formula.set_color(WHITE)
+        final_formula.next_to(summary_title, DOWN, buff=0.75)
+        
+        formula_box = SurroundingRectangle(final_formula, color=TEAL_B, stroke_width=4.5,).scale(1.07)
+        
+        self.play(Write(final_formula), ShowCreation(formula_box), run_time=1)
+        
+        points = VGroup(
+            Text("• Dilation inserts gaps between kernel weights", font_size=32),
+            Text("• Same 9 parameters → Larger receptive field", font_size=32),
+            Text("• D=1: 3x3,  D=2: 5x5,  D=3: 7x7", font_size=32),
+            Text("• Used in: DeepLab, WaveNet, etc.", font_size=32),
+        )
+        points.arrange(DOWN, aligned_edge=LEFT, buff=0.32)
+        points.set_color(WHITE)
+        points.next_to(formula_box, DOWN, buff=1.09)
+        
+        for point in points:
+            self.play(Write(point), run_time=0.38)
+            self.wait(0.5)
+        
+        self.wait(2.5)
+        
+        self.play(FadeOut(VGroup(summary_title, final_formula, formula_box, points)), run_time=0.6)
+        
+
+
 class ReceptiveField(Scene):
     """
     Clean Receptive Field Visualization
