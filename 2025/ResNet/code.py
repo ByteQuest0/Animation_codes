@@ -2,6 +2,560 @@ from manimlib import *
 import numpy as np
 
 
+class ResidualNetwork(Scene):
+    """
+    Visualization of a Residual Network with 3 stacked residual blocks.
+    Each block contains: Layer 1 -> ReLU -> Layer 2 -> (+) -> ReLU
+    With skip connections from input of each block to the addition circle.
+    
+    Animation flow: Build entire structure first, rotate it, then animate blocks one by one
+    using GrowFromCenter for rectangles, GrowArrow for arrows, ShowCreation for skip.
+    """
+    
+    def construct(self):
+        # Color Palette - Premium aesthetic
+        PRIMARY = "#E74C3C"
+        SECONDARY = "#3498DB"
+        SUCCESS = "#2ECC71"
+        ACCENT = "#9B59B6"
+        INPUT_COLOR = "#3498DB"  # Blue for input
+        OUTPUT_COLOR = "#FF9800"  # Orange for output
+        
+        # Text scale factor
+        TEXT_SCALE = 1.33
+        
+        # Layout constants - CONSISTENT SPACING
+        box_width = 4.5
+        box_height = 0.9
+        vertical_gap = 1.6  # Consistent gap between elements within block
+        block_gap = 2.0     # Consistent gap between blocks (averaged)
+        arrow_buff = 0.15   # Consistent arrow buffer
+        
+        # Starting Y position for the network
+        start_y = 5
+        
+        # Collect all elements in a VGroup for rotation
+        all_elements = VGroup()
+        
+        # ==========================================
+        # BUILD ENTIRE STRUCTURE (WITHOUT ANIMATING)
+        # ==========================================
+        
+        # ==========================================
+        # INPUT LAYER BLOCK (Blue)
+        # ==========================================
+        input_block = RoundedRectangle(width=box_width, height=box_height, corner_radius=0.15)
+        input_block.set_fill(INPUT_COLOR, opacity=0.95)
+        input_block.set_stroke(WHITE, width=4)
+        input_block.move_to(UP * start_y)
+        
+        input_text = Text("Input", font_size=34, weight=BOLD)
+        input_text.scale(TEXT_SCALE)
+        input_text.set_color(WHITE)
+        input_text.move_to(input_block.get_center())
+        
+        all_elements.add(input_block, input_text)
+        
+        # ==========================================
+        # CREATE 3 RESIDUAL BLOCKS - Store references for animation
+        # ==========================================
+        
+        current_y = start_y - block_gap
+        layer_counter = 1
+        prev_output_point = input_block.get_bottom()
+        
+        # Store all block data for animation later
+        block_data = []
+        
+        for block_idx in range(3):
+            block_info = {}
+            
+            # ==========================================
+            # Layer 1
+            # ==========================================
+            layer1_y = current_y
+            layer1_box = RoundedRectangle(width=box_width, height=box_height, corner_radius=0.15)
+            layer1_box.set_fill(ACCENT, opacity=0.95)
+            layer1_box.set_stroke(WHITE, width=4)
+            layer1_box.move_to(UP * layer1_y)
+            
+            layer1_text = Text(f"Layer {layer_counter}", font_size=32, weight=BOLD)
+            layer1_text.scale(TEXT_SCALE)
+            layer1_text.set_color(WHITE)
+            layer1_text.move_to(layer1_box.get_center())
+            layer_counter += 1
+            
+            # ==========================================
+            # ReLU 1
+            # ==========================================
+            relu1_y = layer1_y - vertical_gap
+            relu1_box = RoundedRectangle(width=box_width, height=0.7, corner_radius=0.12)
+            relu1_box.set_fill(SUCCESS, opacity=0.95)
+            relu1_box.set_stroke(WHITE, width=4)
+            relu1_box.move_to(UP * relu1_y)
+            
+            relu1_text = Text("ReLU", font_size=30, weight=BOLD)
+            relu1_text.scale(TEXT_SCALE)
+            relu1_text.set_color(WHITE)
+            relu1_text.move_to(relu1_box.get_center())
+            
+            # ==========================================
+            # Layer 2
+            # ==========================================
+            layer2_y = relu1_y - vertical_gap
+            layer2_box = RoundedRectangle(width=box_width, height=box_height, corner_radius=0.15)
+            layer2_box.set_fill(ACCENT, opacity=0.95)
+            layer2_box.set_stroke(WHITE, width=4)
+            layer2_box.move_to(UP * layer2_y)
+            
+            layer2_text = Text(f"Layer {layer_counter}", font_size=32, weight=BOLD)
+            layer2_text.scale(TEXT_SCALE)
+            layer2_text.set_color(WHITE)
+            layer2_text.move_to(layer2_box.get_center())
+            layer_counter += 1
+            
+            # ==========================================
+            # Addition circle
+            # ==========================================
+            add_y = layer2_y - vertical_gap
+            add_circle = Circle(radius=0.5)
+            add_circle.set_fill("#E74C3C", opacity=1)
+            add_circle.set_stroke(WHITE, width=4)
+            add_circle.move_to(UP * add_y)
+            
+            add_text = Text("+", font_size=48, weight=BOLD)
+            add_text.scale(TEXT_SCALE)
+            add_text.set_color(WHITE)
+            add_text.move_to(add_circle.get_center())
+            
+            # ==========================================
+            # ReLU 2
+            # ==========================================
+            relu2_y = add_y - vertical_gap
+            relu2_box = RoundedRectangle(width=box_width, height=0.7, corner_radius=0.12)
+            relu2_box.set_fill(SUCCESS, opacity=0.95)
+            relu2_box.set_stroke(WHITE, width=4)
+            relu2_box.move_to(UP * relu2_y)
+            
+            relu2_text = Text("ReLU", font_size=30, weight=BOLD)
+            relu2_text.scale(TEXT_SCALE)
+            relu2_text.set_color(WHITE)
+            relu2_text.move_to(relu2_box.get_center())
+            
+            # ==========================================
+            # Arrows for this block
+            # ==========================================
+            
+            # Arrow from previous block/input to this block's Layer 1
+            arrow_to_block = Arrow(
+                prev_output_point, 
+                layer1_box.get_top(),
+                buff=arrow_buff, stroke_width=5, max_tip_length_to_length_ratio=0.1
+            ).set_color(WHITE)
+            
+            # Arrow: Layer 1 → ReLU 1
+            arr1 = Arrow(
+                layer1_box.get_bottom(), 
+                relu1_box.get_top(),
+                buff=arrow_buff, stroke_width=5, max_tip_length_to_length_ratio=0.12
+            ).set_color(WHITE)
+            
+            # Arrow: ReLU 1 → Layer 2
+            arr2 = Arrow(
+                relu1_box.get_bottom(), 
+                layer2_box.get_top(),
+                buff=arrow_buff, stroke_width=5, max_tip_length_to_length_ratio=0.12
+            ).set_color(WHITE)
+            
+            # Arrow: Layer 2 → Addition circle
+            arr_to_add = Arrow(
+                layer2_box.get_bottom(), 
+                add_circle.get_top(),
+                buff=arrow_buff, stroke_width=5, max_tip_length_to_length_ratio=0.1
+            ).set_color(WHITE)
+            
+            # Arrow: Addition → ReLU 2
+            arr_add_to_relu = Arrow(
+                add_circle.get_bottom(), 
+                relu2_box.get_top(),
+                buff=arrow_buff, stroke_width=5, max_tip_length_to_length_ratio=0.12
+            ).set_color(WHITE)
+            
+            # ==========================================
+            # Skip connection
+            # ==========================================
+            
+            # Branch point - middle of input arrow
+            skip_branch_y = (prev_output_point[1] + layer1_box.get_top()[1]) / 2
+            skip_start = np.array([0, skip_branch_y, 0])
+            
+            # Go RIGHT to edge of boxes + offset
+            skip_right = np.array([box_width/2 + 1.0, skip_branch_y, 0])
+            # Go DOWN to addition level
+            skip_down = np.array([skip_right[0], add_circle.get_center()[1], 0])
+            # Go LEFT to addition circle right edge
+            skip_end = add_circle.get_right() + RIGHT * 0.05
+            
+            # Create skip path
+            skip_path = VMobject()
+            skip_path.set_points_as_corners([skip_start, skip_right, skip_down, skip_end])
+            skip_path.set_stroke(WHITE, width=4)
+            
+            # Small dot at branch point
+            branch_dot = Dot(radius=0.1, color=WHITE)
+            branch_dot.move_to(skip_start)
+            
+            # Store block info for animation
+            block_info['rectangles'] = [layer1_box, layer1_text, relu1_box, relu1_text,
+                                        layer2_box, layer2_text, add_circle, add_text,
+                                        relu2_box, relu2_text]
+            block_info['arrow_to_block'] = arrow_to_block
+            block_info['arrows'] = [arr1, arr2, arr_to_add, arr_add_to_relu]
+            block_info['skip_path'] = skip_path
+            block_info['branch_dot'] = branch_dot
+            
+            # Add to all_elements for rotation
+            all_elements.add(*block_info['rectangles'])
+            all_elements.add(arrow_to_block, arr1, arr2, arr_to_add, arr_add_to_relu)
+            all_elements.add(skip_path, branch_dot)
+            
+            block_data.append(block_info)
+            
+            # Update for next block
+            prev_output_point = relu2_box.get_bottom()
+            current_y = relu2_y - block_gap
+        
+        # ==========================================
+        # OUTPUT LAYER BLOCK (Orange)
+        # ==========================================
+        output_y = current_y + 0.5
+        output_block = RoundedRectangle(width=box_width, height=box_height, corner_radius=0.15)
+        output_block.set_fill(OUTPUT_COLOR, opacity=0.95)
+        output_block.set_stroke(WHITE, width=4)
+        output_block.move_to(UP * output_y).shift(DOWN*0.63)
+        
+        output_text = Text("Output", font_size=34, weight=BOLD)
+        output_text.scale(TEXT_SCALE)
+        output_text.set_color(WHITE)
+        output_text.move_to(output_block.get_center())
+        
+        # Arrow to output block
+        arrow_to_output = Arrow(
+            prev_output_point,
+            output_block.get_top(),
+            buff=arrow_buff, stroke_width=5, max_tip_length_to_length_ratio=0.1
+        ).set_color(WHITE)
+        
+        all_elements.add(output_block, output_text, arrow_to_output)
+        
+        # ==========================================
+        # STEP 1: ROTATE ENTIRE STRUCTURE FIRST (90° counter-clockwise)
+        # ==========================================
+        all_elements.rotate(PI / 2)
+        
+        # Adjust camera for horizontal layout
+        self.camera.frame.scale(1.7).shift(LEFT*6 + DOWN*8.9)
+        
+        # ==========================================
+        # STEP 2: ANIMATE BLOCKS ONE BY ONE (already rotated)
+        # Using GrowFromCenter, GrowArrow, ShowCreation as original
+        # ==========================================
+        
+        # Animate INPUT block first
+        self.play(
+            GrowFromCenter(input_block),
+            GrowFromCenter(input_text),
+            run_time=0.6
+        )
+        self.wait(1)
+        
+        # Animate each residual block
+        for block_info in block_data:
+            # First: Arrow from previous to this block
+            self.play(
+                GrowArrow(block_info['arrow_to_block']),
+                run_time=0.4
+            )
+            
+            # GrowFromCenter ALL rectangles of this block at once
+            self.play(
+                *[GrowFromCenter(rect) for rect in block_info['rectangles']],
+                run_time=0.8
+            )
+            
+            # Animate all internal arrows at once
+            self.play(
+                *[GrowArrow(arr) for arr in block_info['arrows']],
+                run_time=0.6
+            )
+            
+            # Skip connection animation
+            self.play(
+                FadeIn(block_info['branch_dot'], scale=0.5),
+                run_time=0.15
+            )
+            self.play(
+                ShowCreation(block_info['skip_path']),
+                run_time=0.7,
+                rate_func=smooth
+            )
+            
+            self.play(self.camera.frame.animate.shift(RIGHT*4.8))
+
+
+        # Animate OUTPUT block
+        self.play(
+            GrowArrow(arrow_to_output),
+            run_time=0.4
+        )
+        self.play(
+            GrowFromCenter(output_block),
+            GrowFromCenter(output_text),
+            run_time=0.6
+        )
+        
+        self.wait(2)
+
+        self.play(self.camera.frame.animate.shift(LEFT*7.89).scale(1.28))
+
+        a = Text("Residual Network", font_size=156, weight=BOLD).next_to(all_elements, UP, buff=3.88).set_color(YELLOW)
+        self.play(Write(a), self.camera.frame.animate.shift(UP*1.8))
+        self.wait(2)
+
+        self.play(FadeOut(a), self.camera.frame.animate.shift(DOWN*4))
+
+        self.wait()
+
+        # ==========================================
+        # MATHEMATICAL EXPLANATION: LAYER 5 ACTIVATION
+        # ==========================================
+     
+        eq1 = Tex(
+            r"a^{(4)} = ReLU( W^{(4)} a^{(3)} + b^{(4)} + a^{(2)})",
+            font_size=150
+        )
+        eq1.set_color(WHITE)
+        eq1.next_to(all_elements, DOWN, buff=2.2)
+
+        eq1[5:9].set_color(GREEN)
+        
+        self.play(Write(eq1), run_time=1.2)
+        self.wait(1.5)
+
+        rect = SurroundingRectangle(eq1[:4], stroke_width=6).scale(1.12)
+        self.play(ShowCreation(rect), run_time=0.6)
+        
+        text3 = Text("Output of 4th Layer", font_size=84, weight=BOLD)
+        text3.set_color(YELLOW)
+        text3.next_to(eq1, DOWN, buff=1.355)
+        
+        self.play(FadeIn(text3, shift=LEFT * 0.3), run_time=0.9)
+        self.wait(2)
+
+        brace = Brace(eq1[5:9], DOWN, buff=0.55).set_color(YELLOW)
+
+        self.play(ReplacementTransform(rect, brace), FadeOut(text3),)
+        self.wait(2)
+
+        self.play(Transform(brace, Brace(eq1[10:23], DOWN, buff=0.55).set_color(YELLOW)), run_time=0.6)
+        text3 = Text("Weighted Sum + Bias From Last Layer", font_size=76, weight=BOLD)
+        text3.set_color(YELLOW)
+        text3.next_to(eq1, DOWN, buff=1.3959)
+        
+        self.play(FadeIn(text3, shift=LEFT * 0.3), run_time=0.9)
+        self.wait(2)
+
+        text4 = Text("Skip Connection From Last Residual Block", font_size=70, weight=BOLD)
+        text4.set_color(YELLOW)
+        text4.next_to(eq1, DOWN, buff=1.3959)
+        
+        self.play(Transform(brace, Brace(eq1[-5:-1], DOWN, buff=0.55).set_color(YELLOW)), FadeIn(text4, shift=LEFT * 0.3), FadeOut(text3),run_time=0.9)
+        self.wait(2)
+
+        self.play(FadeOut(text4), FadeOut(brace),run_time=0.6) 
+        self.wait()
+
+        self.play(eq1.animate.shift(DOWN*1))
+
+        temp = Tex(r"a^{(4)} = ReLU(z^{(4)} + a^{(2)})", font_size=190).set_color(WHITE).move_to(eq1.get_center())
+
+        temp[5:9].set_color(GREEN)
+
+        self.play(Transform(eq1, temp))
+        self.wait(2)
+
+        rect = SurroundingRectangle(eq1[15:21], stroke_width=10).scale(1.2)
+        self.play(ShowCreation(rect))
+
+        self.wait(2)
+
+        temp = Tex(r"a^{(4)} = ReLU(a^{(2)})", font_size=190).set_color(WHITE).move_to(eq1.get_center())
+        temp[5:9].set_color(GREEN)
+
+        self.play(Transform(eq1, temp), FadeOut(rect))
+        self.wait(2)
+
+        temp = Tex(r"a^{(4)} = ReLU(z^{(4)} + a^{(2)})", font_size=190).set_color(WHITE).move_to(eq1.get_center())
+
+        temp[5:9].set_color(GREEN)
+
+        self.play(Transform(eq1, temp))
+        self.wait(2)
+
+        rect = SurroundingRectangle(eq1[-8], stroke_width=8.4).scale(1.2)
+        self.play(ShowCreation(rect))
+
+        self.wait(2)
+
+        # ==========================================
+        # DIMENSIONALITY PROBLEM
+        # ==========================================
+        
+        self.play(FadeOut(rect), run_time=0.4)
+        
+        # Show the dimension issue question
+        dim_question = Text("But what if dimensions don't match?", font_size=82, weight=BOLD)
+        dim_question.set_color("#E74C3C")
+        dim_question.next_to(eq1, DOWN, buff=1.01)
+        
+        self.play(FadeIn(dim_question, shift=UP * 0.3), self.camera.frame.animate.shift(DOWN*0.8),run_time=0.8)
+        self.wait(1.5)
+        
+        self.play(FadeOut(dim_question), run_time=0.4)
+        
+        # Show dimension mismatch example
+        dim_z = Tex(r"z^{(4)} \in \mathbb{R}^{256}", font_size=120)
+        dim_z.set_color(YELLOW)
+        dim_z.next_to(eq1, DOWN, buff=1.2).shift(LEFT * 4)
+        
+        dim_a = Tex(r"a^{(2)} \in \mathbb{R}^{128}", font_size=120)
+        dim_a.set_color(MAROON_B)
+        dim_a.next_to(eq1, DOWN, buff=1.2).shift(RIGHT * 4)
+        
+        vs_text = Text("vs", font_size=80, weight=BOLD)
+        vs_text.set_color(WHITE)
+        vs_text.next_to(eq1, DOWN, buff=1.5)
+        
+        self.play(
+            Write(dim_z),
+            Write(dim_a),
+            FadeIn(vs_text),
+            run_time=1
+        )
+        self.wait(2)
+        
+
+        # Show the problem - can't add!
+        problem_text = Text("Can't add vectors of different sizes!", font_size=64, weight=BOLD)
+        problem_text.set_color("#E74C3C")
+        problem_text.next_to(vs_text, DOWN, buff=1.2)
+        
+        cross_mark = Tex(r"\times", font_size=250)
+        cross_mark.set_color("#E74C3C")
+        cross_mark.next_to(problem_text, RIGHT, buff=0.5)
+        
+        self.play(
+            FadeIn(problem_text, shift=UP * 0.2),
+            Write(cross_mark),
+            self.camera.frame.animate.shift(DOWN*1.2),
+            run_time=0.8
+        )
+        self.wait(2)
+        
+        # Clear and show solution
+        self.play(
+            FadeOut(dim_z), FadeOut(dim_a), FadeOut(vs_text),
+            FadeOut(problem_text), FadeOut(cross_mark),
+            self.camera.frame.animate.shift(UP*1.2),
+            run_time=0.5
+        )
+        
+        # ==========================================
+        # SOLUTION: PROJECTION MATRIX W_s
+        # ==========================================
+        
+        solution_title = Text("Solution: Projection Matrix", font_size=80, weight=BOLD)
+        solution_title.set_color("#2ECC71")
+        solution_title.next_to(eq1, DOWN, buff=1.3)
+        
+        self.play(Write(solution_title), run_time=0.8)
+        self.wait(2)
+        
+        # Show W_s introduction
+        ws_text = Tex(r"W_s \in \mathbb{R}^{256 \times 128}", font_size=180)
+        ws_text.set_color("#F39C12")
+        ws_text.move_to(solution_title.get_center())
+        
+        self.play(Write(ws_text), FadeOut(solution_title),run_time=0.8)
+        self.wait(2)
+        
+        # Clear and show modified equation
+        self.play(FadeOut(ws_text), run_time=0.4)
+        
+        # Transform to new equation with W_s
+        new_eq = Tex(r"a^{(4)} = ReLU(z^{(4)} + W_s \cdot a^{(2)})", font_size=170)
+        new_eq.set_color(WHITE)
+        new_eq.move_to(eq1.get_center())
+        new_eq[5:9].set_color(GREEN)
+        new_eq[-8:-6].set_color(ORANGE)
+        
+        self.play(Transform(eq1, new_eq), run_time=1)
+        self.wait(1.5)
+        
+        
+        ws_label = Text("Projection Matrix", font_size=120, weight=BOLD)
+        ws_label.set_color(ORANGE)
+        ws_label.next_to(eq1, DOWN, buff=1.14)
+        
+        self.play(
+            FadeIn(ws_label, shift=UP * 0.2),
+            run_time=0.8
+        )
+        self.wait(2)
+        
+        # ==========================================
+        # DIMENSION CHECK
+        # ==========================================
+        
+        self.play(FadeOut(ws_label), run_time=0.4)
+        
+        dim_check_title = Text("Dimension Check:", font_size=110, weight=BOLD)
+        dim_check_title.set_color(YELLOW)
+        dim_check_title.next_to(eq1, DOWN, buff=1.2)
+        
+        self.play(Write(dim_check_title), run_time=0.6)
+        
+        # Show the dimension calculation
+        dim_calc = Tex(
+            r"W_s \cdot a^{(2)} : (256 \times 128) \cdot (128 \times 1) = (256 \times 1)",
+            font_size=120
+        )
+        dim_calc.set_color(WHITE)
+        dim_calc.move_to(dim_check_title)
+        
+        self.play(Write(dim_calc), FadeOut(dim_check_title),run_time=1.2)
+        self.wait(2)
+        
+        # Show checkmark
+        check_mark = Tex(r"\checkmark", font_size=150)
+        check_mark.set_color("#2ECC71")
+        check_mark.next_to(dim_calc, RIGHT, buff=0.5)
+        
+        self.play(Write(check_mark), run_time=0.5)
+        self.wait(1)
+        
+
+        # ==========================================
+        # FINAL SUMMARY
+        # ==========================================
+        
+        self.play(
+            FadeOut(dim_calc),
+            FadeOut(check_mark),
+            run_time=0.5
+        )
+        self.wait(2)
+
 class ResidualBlock(Scene):
     """
     Advanced visualization of Residual Blocks:
