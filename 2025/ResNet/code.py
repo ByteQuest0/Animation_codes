@@ -2,6 +2,614 @@ from manimlib import *
 import numpy as np
 
 
+class Introduction(Scene):
+    """
+    Introduction to Residual Networks: Why do we need them?
+    
+    This class explains the PROBLEMS that ResNets solve:
+    1. What does each layer in a deep network learn?
+    2. The degradation problem - deeper networks perform WORSE
+    3. Vanishing gradients - why early layers can't learn
+    4. Why identity mapping is hard for neural networks
+    5. The key insight that makes ResNets work
+    
+    NO residual blocks or network architecture shown - just the concepts.
+    """
+    
+    def construct(self):
+
+        self.camera.frame.scale(1.15)
+        # ==========================================
+        # COLOR PALETTE - Premium aesthetic
+        # ==========================================
+        LAYER_COLOR = "#9B59B6"      # Purple for layers
+        ARROW_COLOR = WHITE
+        SUCCESS_COLOR = "#2ECC71"    # Green for good
+        ERROR_COLOR = "#E74C3C"      # Red for bad/problem
+        HIGHLIGHT_COLOR = "#F39C12"  # Orange for emphasis
+        INFO_COLOR = "#3498DB"       # Blue for info
+        
+        # ==========================================
+        # PART 1: INTRODUCTION - WHY GO DEEPER?
+        # ==========================================
+        
+        title = Text("Why Do We Need Deeper Networks?", font_size=56, weight=BOLD)
+        title.set_color(HIGHLIGHT_COLOR)
+        title.to_edge(UP, buff=0.6).shift(DOWN*0.7)
+        
+        self.play(Write(title), run_time=1)
+        self.wait(1)
+        
+        # Simple intuition
+        intuition = Text("More layers = More features = Better accuracy?", 
+                        font_size=40, weight=BOLD)
+        intuition.set_color(WHITE)
+        intuition.next_to(title, DOWN, buff=0.8)
+        
+        self.play(FadeIn(intuition, shift=UP * 0.3), run_time=0.7)
+        self.wait(2)
+
+        
+        self.play(FadeOut(intuition), FadeOut(title), run_time=0.5)
+        
+        # ==========================================
+        # PART 2: WHAT DOES EACH LAYER LEARN?
+        # ==========================================
+        
+        layer_title = Text("What Does Each Layer Learn?", font_size=52, weight=BOLD)
+        layer_title.set_color(INFO_COLOR)
+        layer_title.to_edge(UP, buff=0.5)
+        
+        self.play(Write(layer_title), run_time=0.8)
+        
+        # Create visual showing feature hierarchy
+        # (title_above, range_inside, features, color)
+        layer_data = [
+            ("Early Layers", "1-3", "Edges\nColors\nSimple Shapes", "#E74C3C"),
+            ("Middle Layers", "4-8", "Textures\nPatterns\nObject Parts", "#F39C12"),
+            ("Deep Layers", "9-16", "Features\nObjects\nContext", "#2ECC71"),
+            ("Very Deep", "17+", "Abstract \n Concepts\n ", "#9B59B6"),
+        ]
+        
+        feature_blocks = VGroup()
+        arrows = VGroup()
+        
+        start_x = -6
+        spacing_x = 4.02
+        
+        for i, (title, layer_range, features, color) in enumerate(layer_data):
+            # Create a feature card
+            card = RoundedRectangle(width=2.8, height=2.4, corner_radius=0.12)
+            card.set_fill(color, opacity=0.85)
+            card.set_stroke(WHITE, width=2.5)
+            card.move_to(RIGHT * (start_x + i * spacing_x) + DOWN * 0.3)
+            
+            # Title ABOVE the rectangle (outside)
+            title_text = Text(title, font_size=30, weight=BOLD)
+            title_text.set_color(WHITE)
+            title_text.next_to(card, UP, buff=0.35)
+            
+            # Layer range inside card at the top
+            range_text = Text(layer_range, font_size=34, weight=BOLD)
+            range_text.set_color(WHITE)
+            range_text.move_to(card.get_top() + DOWN * 0.37)
+            
+            # Feature list - create separate lines with bigger font
+            feature_lines = features.split("\n")
+            feature_group = VGroup()
+            for line in feature_lines:
+                line_text = Text(line, font_size=24, weight=BOLD)
+                line_text.set_color(WHITE)
+                feature_group.add(line_text)
+            feature_group.arrange(DOWN, buff=0.12)
+            feature_group.move_to(card.get_center() + DOWN * 0.2)
+            
+            feature_blocks.add(VGroup(card, title_text, range_text, feature_group))
+            
+            # Add arrow
+            if i < len(layer_data) - 1:
+                arrow = Arrow(
+                    card.get_right() + RIGHT * 0.05,
+                    card.get_right() + RIGHT * 1.15,
+                    buff=0, stroke_width=3, max_tip_length_to_length_ratio=0.3
+                ).set_color(WHITE)
+                arrows.add(arrow)
+        
+        # Animate feature blocks one by one
+        for i, block in enumerate(feature_blocks):
+            self.play(GrowFromCenter(block), run_time=0.5)
+            if i < len(arrows):
+                self.play(GrowArrow(arrows[i]), run_time=0.3)
+        
+        self.wait(1)
+
+        
+        # Key insight
+        hierarchy_insight = Text("Deeper layers = Higher-level abstractions!", 
+                                font_size=42, weight=BOLD)
+        hierarchy_insight.set_color(SUCCESS_COLOR)
+        hierarchy_insight.move_to(DOWN * 3.14)
+        
+        self.play(FadeIn(hierarchy_insight, shift=UP * 0.2), run_time=0.6)
+        self.wait(2)
+        
+        # Clear
+        self.play(
+            FadeOut(layer_title), FadeOut(feature_blocks), 
+            FadeOut(arrows), FadeOut(hierarchy_insight),
+            run_time=0.6
+        )
+        
+        # ==========================================
+        # PART 3: THE EXPECTATION
+        # ==========================================
+        
+        expect_title = Text("The Expectation", font_size=65, weight=BOLD)
+        expect_title.set_color(SUCCESS_COLOR)
+        expect_title.to_edge(UP, buff=0.5)
+        
+        self.play(Write(expect_title), run_time=0.7)
+        
+        expectations = [
+            "More layers -> Learn more complex features",
+            "More layers -> Better generalization",
+            "More layers -> Higher accuracy",
+        ]
+        
+        exp_group = VGroup()
+        for i, exp in enumerate(expectations):
+            text = Text(exp, font_size=39, weight=BOLD)
+            text.set_color(WHITE)
+            text.move_to(UP * (0.8 - i * 1.0))
+            
+            check = Text("", font_size=40, weight=BOLD)
+            check.set_color(SUCCESS_COLOR)
+            check.next_to(text, LEFT, buff=0.3)
+            
+            exp_group.add(VGroup(check, text))
+        
+        for item in exp_group:
+            self.play(FadeIn(item, shift=RIGHT * 0.3), run_time=0.5)
+            self.wait(0.5)
+        
+        self.wait(1)
+        
+        # Add the logical conclusion
+        conclusion = Text("So a 56-layer network should beat \n       a 20-layer network!", 
+                         font_size=50, weight=BOLD)
+        conclusion.set_color(INFO_COLOR)
+        conclusion.move_to(DOWN * 2.98)
+        
+        self.play(FadeIn(conclusion, shift=UP * 0.2), run_time=0.6)
+        self.wait(2)
+        
+        self.play(FadeOut(expect_title), FadeOut(exp_group), FadeOut(conclusion), run_time=0.5)
+        
+        # ==========================================
+        # PART 4: THE SHOCKING REALITY
+        # ==========================================
+        
+        reality_title = Text("The Shocking Reality", font_size=62, weight=BOLD)
+        reality_title.set_color(ERROR_COLOR)
+        reality_title.to_edge(UP, buff=0.5)
+        
+        self.play(Write(reality_title), run_time=0.7)
+        self.wait(0.5)
+        
+        # Show the actual experimental results text
+        experiment = Text("Experiment: 56-layer vs 20-layer network \n           on CIFAR-10 Dataset", 
+                         font_size=45, weight=BOLD)
+        experiment.set_color(WHITE)
+        experiment.next_to(reality_title, DOWN, buff=1)
+        
+        self.play(FadeIn(experiment), run_time=0.5)
+        self.wait(1)
+        
+        # Results
+        result_20 = Text("20-layer:  Error = 7.9%", font_size=46, weight=BOLD)
+        result_20.set_color(SUCCESS_COLOR)
+        result_20.move_to(UP * 0.3).shift(DOWN)
+        
+        result_56 = Text("56-layer:  Error = 9.6%", font_size=46, weight=BOLD)
+        result_56.set_color(ERROR_COLOR)
+        result_56.move_to(DOWN * 0.6).shift(DOWN*1.19)
+        
+        self.play(FadeIn(result_20, shift=LEFT * 0.3), run_time=0.5)
+        self.wait(0.5)
+        self.play(FadeIn(result_56, shift=LEFT * 0.3), run_time=0.5)
+        self.wait(1)
+        
+        # Highlight the problem
+        problem_box = RoundedRectangle(width=10, height=1.2, corner_radius=0.1)
+        problem_box.set_stroke(ERROR_COLOR, width=4)
+        problem_box.set_fill(ERROR_COLOR, opacity=0.15)
+        problem_box.move_to(DOWN * 2.2).shift(DOWN)
+        
+        problem_text = Text("Deeper network is WORSE!", font_size=40, weight=BOLD)
+        problem_text.set_color(ERROR_COLOR)
+        problem_text.move_to(problem_box.get_center())
+        
+        self.play(GrowFromCenter(problem_box), run_time=0.4)
+        self.play(Write(problem_text), run_time=0.5)
+        self.wait(2)
+        
+        self.play(
+            FadeOut(reality_title), FadeOut(experiment),
+            FadeOut(result_20), FadeOut(result_56),
+            FadeOut(problem_box), FadeOut(problem_text),
+            run_time=0.6
+        )
+        
+        # ==========================================
+        # PART 5: THE DEGRADATION PROBLEM - GRAPH
+        # ==========================================
+        
+        degradation_title = Text("The Degradation Problem", font_size=62, weight=BOLD)
+        degradation_title.set_color(ERROR_COLOR)
+        degradation_title.to_edge(UP, buff=0.5)
+        
+        self.play(Write(degradation_title), run_time=0.7)
+        self.wait(0.5)
+        
+        # Create BIGGER graph
+        graph_center = DOWN * 0.87
+        graph_width = 9
+        graph_height = 4.5
+        
+        # Axes - bigger
+        y_axis = Arrow(
+            graph_center + DOWN * (graph_height/2) + LEFT * 4.5,
+            graph_center + UP * (graph_height/2) + LEFT * 4.5,
+            stroke_width=4, buff=0
+        ).set_color(WHITE)
+        
+        x_axis = Arrow(
+            graph_center + DOWN * (graph_height/2) + LEFT * 4.5,
+            graph_center + DOWN * (graph_height/2) + RIGHT * 4.5,
+            stroke_width=4, buff=0
+        ).set_color(WHITE)
+        
+        y_label = Text("Training Error", font_size=32, weight=BOLD)
+        y_label.set_color(WHITE)
+        y_label.rotate(PI/2)
+        y_label.next_to(y_axis, LEFT, buff=0.3)
+        
+        x_label = Text("Epochs", font_size=39, weight=BOLD)
+        x_label.set_color(WHITE)
+        x_label.next_to(x_axis, DOWN, buff=0.3)
+        
+        self.play(ShowCreation(y_axis), ShowCreation(x_axis), run_time=0.5)
+        self.play(FadeIn(y_label), FadeIn(x_label), run_time=0.4)
+        
+        # Create both curves - BIGGER
+        base_x = graph_center[0] - 4
+        base_y = graph_center[1]
+        
+        # 20-layer curve (good - lower error)
+        shallow_curve = VMobject()
+        shallow_points = [
+            np.array([base_x, base_y + 1.8, 0]),
+            np.array([base_x + 2, base_y + 0.4, 0]),
+            np.array([base_x + 4, base_y - 0.5, 0]),
+            np.array([base_x + 6, base_y - 1.2, 0]),
+            np.array([base_x + 8, base_y - 1.5, 0]),
+        ]
+        shallow_curve.set_points_smoothly(shallow_points)
+        shallow_curve.set_stroke(SUCCESS_COLOR, width=5)
+        
+        shallow_label = Text("20-layer", font_size=38, weight=BOLD)
+        shallow_label.set_color(SUCCESS_COLOR)
+        shallow_label.next_to(shallow_curve.get_end(), RIGHT, buff=0.2)
+        
+        # 56-layer curve (bad - higher error that gets worse)
+        deep_curve = VMobject()
+        deep_points = [
+            np.array([base_x, base_y + 1.8, 0]),
+            np.array([base_x + 2, base_y + 0.6, 0]),
+            np.array([base_x + 4, base_y + 0.1, 0]),
+            np.array([base_x + 6, base_y - 0.2, 0]),
+            np.array([base_x + 8, base_y - 0.4, 0]),
+        ]
+        deep_curve.set_points_smoothly(deep_points)
+        deep_curve.set_stroke(ERROR_COLOR, width=5)
+        
+        deep_label = Text("56-layer", font_size=38, weight=BOLD)
+        deep_label.set_color(ERROR_COLOR)
+        deep_label.next_to(deep_curve.get_end(), RIGHT, buff=0.2)
+        
+        self.play(ShowCreation(shallow_curve), run_time=1)
+        self.play(FadeIn(shallow_label), run_time=0.3)
+        self.wait(0.5)
+        
+        self.play(ShowCreation(deep_curve), run_time=1)
+        self.play(FadeIn(deep_label), run_time=0.3)
+        self.wait(1)
+
+
+
+        
+        # Highlight the gap with two arrows - adjusted for bigger graph
+        gap_arrow_up = Arrow(
+            np.array([base_x + 7, base_y - 0.8, 0]),
+            np.array([base_x + 7, base_y - 1.4, 0]),
+            stroke_width=4, buff=0
+        ).set_color(HIGHLIGHT_COLOR).shift(UP*0.04)
+        
+        gap_arrow_down = Arrow(
+            np.array([base_x + 7, base_y + 0.2, 0]),
+            np.array([base_x + 7, base_y - 0.3, 0]),
+            stroke_width=4, buff=0
+        ).set_color(HIGHLIGHT_COLOR).rotate(PI).shift(DOWN*0.5)
+        
+        gap_arrow = VGroup(gap_arrow_up, gap_arrow_down)
+        
+        gap_label_1 = Text("Degradation Gap", weight=BOLD).next_to(gap_arrow, UP, buff=0.7)
+        gap_label_1.set_color(HIGHLIGHT_COLOR)
+        
+        self.play(GrowFromCenter(gap_arrow), FadeIn(gap_label_1), run_time=0.6)
+        self.wait(1)
+        
+        
+        # Clear graph
+        graph_elements = VGroup(
+            y_axis, x_axis, y_label, x_label,
+            shallow_curve, shallow_label, 
+            deep_curve, deep_label,
+            gap_arrow, gap_label_1
+        )
+        self.play(FadeOut(graph_elements), FadeOut(degradation_title), run_time=0.6)
+        
+        # ==========================================
+        # PART 6: WHY DOES THIS HAPPEN?
+        # ==========================================
+
+        why_title = Text("Why Does Degradation Happen?", font_size=58, weight=BOLD)
+        why_title.set_color(HIGHLIGHT_COLOR)
+        why_title.to_edge(UP, buff=0.5)
+        
+        self.play(Write(why_title), run_time=0.7)
+        self.wait(0.5)
+        
+        # The logical argument - wrapped long texts
+        argument_points = [
+            ("Consider this:", WHITE, 46),
+            ("   If 20 layers is optimal, what should extra 36 layers do?", INFO_COLOR, 33),
+            ("Ideally: Just pass the input unchanged (identity mapping)", SUCCESS_COLOR, 33),
+            ("output = input", GREEN, 47),
+            ("Then 56-layer would be AT LEAST as good as 20-layer!", WHITE, 33),
+        ]
+        
+        arg_group = VGroup()
+        for i, (text, color, size) in enumerate(argument_points):
+            t = Text(text, font_size=size, weight=BOLD)
+            t.set_color(color)
+            t.move_to(UP * (1.4 - i * 1.0))
+            arg_group.add(t)
+        
+        for item in arg_group:
+            self.play(FadeIn(item, shift=UP * 0.2), run_time=0.5)
+            self.wait(1)
+        
+        self.wait(1)
+        self.play(FadeOut(arg_group), run_time=0.4)
+        
+        # The problem reveal
+        the_problem = Text("THE PROBLEM:", font_size=48, weight=BOLD)
+        the_problem.set_color(ERROR_COLOR)
+        the_problem.move_to(UP * 1.5)
+        
+        problem_statement = Text("Neural networks CANNOT easily learn the identity!", 
+                                font_size=38, weight=BOLD)
+        problem_statement.set_color(ERROR_COLOR)
+        problem_statement.next_to(the_problem, DOWN, buff=0.76)
+        
+        self.play(Write(the_problem), run_time=0.5)
+        self.play(FadeIn(problem_statement, shift=UP * 0.2), run_time=0.6)
+        self.wait(1.5)
+        
+        # Why? - Using numbers instead of bullets, wrapped text
+        why_identity_hard = VGroup(
+            Text("Why is identity hard?", font_size=38, weight=BOLD),
+            Text("1. Weights are randomly initialized", font_size=32),
+            Text("2. Networks learn complex transformations", font_size=32),
+            Text("3. Optimizer pushes weights\n   towards complex solutions", font_size=32),
+        )
+        why_identity_hard[0].set_color(HIGHLIGHT_COLOR)
+        for item in why_identity_hard[1:]:
+            item.set_color(WHITE)
+        
+        why_identity_hard.arrange(DOWN, buff=0.35, aligned_edge=LEFT)
+        why_identity_hard.move_to(DOWN * 1.2).shift(DOWN*0.97)
+        
+        self.play(FadeIn(why_identity_hard[0]), run_time=0.4)
+        for item in why_identity_hard[1:]:
+            self.play(FadeIn(item, shift=RIGHT * 0.2), run_time=0.4)
+        
+        self.wait(2)
+        
+        self.play(
+            FadeOut(why_title), FadeOut(the_problem), 
+            FadeOut(problem_statement), FadeOut(why_identity_hard),
+            run_time=0.5
+        )
+        
+        # ==========================================
+        # PART 7: THE VANISHING GRADIENT PROBLEM
+        # ==========================================
+        
+        gradient_title = Text("Another Problem: Vanishing Gradients", font_size=48, weight=BOLD)
+        gradient_title.set_color(ERROR_COLOR)
+        gradient_title.to_edge(UP, buff=0.5)
+        
+        self.play(Write(gradient_title), run_time=0.7)
+        self.wait(0.5)
+        
+        # Explain the chain rule - positioned higher
+        chain_explanation = VGroup(
+            Text("During backpropagation:", font_size=38, weight=BOLD),
+            Text("Gradients are multiplied through each layer", font_size=34, weight=BOLD),
+        )
+        chain_explanation[0].set_color(INFO_COLOR)
+        chain_explanation[1].set_color(WHITE)
+        chain_explanation.arrange(DOWN, buff=0.4)
+        chain_explanation.next_to(gradient_title, DOWN, buff=0.5)
+        
+        self.play(FadeIn(chain_explanation[0]), run_time=0.4)
+        self.play(FadeIn(chain_explanation[1]), run_time=0.4)
+        self.wait(1)
+        
+        # Visual: Gradient getting smaller - NO TEXT inside circles
+        gradient_visual = VGroup()
+        gradient_sizes = [0.55, 0.45, 0.35, 0.25, 0.16, 0.08]
+        start_x = -4.5
+        
+        for i, size in enumerate(gradient_sizes):
+            circle = Circle(radius=size)
+            circle.set_fill(ERROR_COLOR, opacity=0.9)
+            circle.set_stroke(WHITE, width=2)
+            circle.move_to(RIGHT * (start_x + i * 1.8) + DOWN * 0.3)
+            
+            gradient_visual.add(circle)
+        
+        # Layer labels BELOW circles, not inside
+        layer_labels = VGroup()
+        for i, circle in enumerate(gradient_visual):
+            label = Text(f"L{len(gradient_sizes)-i}", font_size=30, weight=BOLD)
+            label.set_color(WHITE)
+            label.next_to(circle, DOWN, buff=0.15)
+            layer_labels.add(label)
+        
+        # Add arrows between
+        grad_arrows = VGroup()
+        for i in range(len(gradient_visual) - 1):
+            arrow = Arrow(
+                gradient_visual[i+1].get_left(),
+                gradient_visual[i].get_right(),
+                buff=0.08, stroke_width=2.5
+            ).set_color(WHITE)
+            grad_arrows.add(arrow)
+        
+        # Label positioned to the right, not overlapping
+        gradient_flow_label = Text("← Gradient flows backward", font_size=32, weight=BOLD)
+        gradient_flow_label.set_color(WHITE)
+        gradient_flow_label.next_to(gradient_visual[-3], DOWN, buff=1.5)
+        
+        self.play(*[GrowFromCenter(g) for g in gradient_visual], run_time=0.8)
+        self.play(*[FadeIn(l) for l in layer_labels], run_time=0.4)
+        self.play(*[GrowArrow(a) for a in grad_arrows], run_time=0.5)
+        self.play(FadeIn(gradient_flow_label), run_time=0.74)
+        self.wait(2)
+
+        
+        # Problem statement - positioned lower to avoid overlap
+        vanish_problem = VGroup(
+            Text("By the time gradients reach early layers...", font_size=39, weight=BOLD),
+            Text("They're almost ZERO!", font_size=45, weight=BOLD),
+        )
+        vanish_problem[0].set_color(WHITE)
+        vanish_problem[1].set_color(ERROR_COLOR)
+        vanish_problem.arrange(DOWN, buff=0.45)
+        vanish_problem.move_to(DOWN * 2.0).shift(DOWN*1.1)
+        
+        self.play(FadeIn(vanish_problem[0]), FadeOut(gradient_flow_label), run_time=0.4)
+        self.play(FadeIn(vanish_problem[1], scale=1.2), run_time=0.5)
+        self.wait(2)
+        
+        # Consequence - positioned with proper spacing
+        consequence = Text("Early layers can't learn! They stay random!", font_size=40, weight=BOLD)
+        consequence.set_color(HIGHLIGHT_COLOR)
+        consequence.move_to(DOWN * 3.0)
+        
+        self.play(FadeIn(consequence, shift=LEFT * 0.2), FadeOut(vanish_problem),run_time=0.5)
+        self.wait(2)
+        
+        # Clear
+        self.play(
+            FadeOut(gradient_title), FadeOut(chain_explanation),
+            FadeOut(gradient_visual), FadeOut(layer_labels), FadeOut(grad_arrows), 
+            FadeOut(consequence),
+            run_time=0.6
+        )
+        
+        # ==========================================
+        # PART 8: THE SOLUTION PREVIEW
+        # ==========================================
+        
+        solution_title = Text("The Solution: A New Insight", font_size=52, weight=BOLD)
+        solution_title.set_color(SUCCESS_COLOR)
+        solution_title.to_edge(UP, buff=0.6).shift(UP*0.14)
+        
+        self.play(Write(solution_title), run_time=0.7)
+        self.wait(0.5)
+        
+        # The key insights
+        insights = [
+            ("The Problem:", ERROR_COLOR),
+            ("Learning identity H(x) = x is hard", WHITE),
+            ("", WHITE),  # spacer
+            ("The Solution:", SUCCESS_COLOR),
+            ("Don't ask layers to learn identity", WHITE),
+            ("Let them learn the RESIDUAL: F(x) = H(x) - x", INFO_COLOR),
+            ("", WHITE),  # spacer
+            ("If identity is optimal:", HIGHLIGHT_COLOR),
+            ("Layers just need to output F(x) = 0", SUCCESS_COLOR),
+            ("Pushing weights to zero is EASY!", SUCCESS_COLOR),
+        ]
+        
+        insight_group = VGroup()
+        for i, (text, color) in enumerate(insights):
+            if text:
+                t = Text(text, font_size=35, weight=BOLD)
+                t.set_color(color)
+                insight_group.add(t)
+        
+        insight_group.arrange(DOWN, buff=0.35, aligned_edge=LEFT)
+        insight_group.move_to(DOWN * 0.5).shift(DOWN*0.23)
+        
+        for item in insight_group:
+            self.play(FadeIn(item, shift=RIGHT * 0.15), run_time=0.4)
+            self.wait(0.4)
+        
+        self.wait(2)
+
+        self.play(FadeOut(solution_title), FadeOut(insight_group), run_time=0.5)
+        
+        # ==========================================
+        # PART 9: FINAL SUMMARY
+        # ==========================================
+        
+        summary_title = Text("Why We Need ResNets", font_size=52, weight=BOLD)
+        summary_title.set_color(HIGHLIGHT_COLOR)
+        summary_title.to_edge(UP, buff=0.5)
+        
+        self.play(Write(summary_title), run_time=0.7)
+        
+        summary_points = [
+            ("Deeper networks suffer from degradation", ERROR_COLOR),
+            ("Gradients vanish in early layers", ERROR_COLOR),
+            ("Networks can't learn identity mappings", ERROR_COLOR),
+            ("", WHITE),
+            ("Skip connections provide 'gradient highways'", SUCCESS_COLOR),
+            ("Learning F(x) = 0 is trivial", SUCCESS_COLOR),
+            ("Enables training 100+ layer networks!", SUCCESS_COLOR),
+        ]
+        
+        summary_group = VGroup()
+        for text, color in summary_points:
+            if text:
+                t = Text(text, font_size=35, weight=BOLD)
+                t.set_color(color)
+                summary_group.add(t)
+        
+        summary_group.arrange(DOWN, buff=0.4, aligned_edge=LEFT)
+        summary_group.move_to(DOWN * 0.5)
+        
+        for item in summary_group:
+            self.play(FadeIn(item, shift=LEFT * 0.2), run_time=0.35)
+        
+        self.wait(1)
+     
+
 class ResidualNetwork(Scene):
     """
     Visualization of a Residual Network with 3 stacked residual blocks.
