@@ -725,5 +725,219 @@ class BottleneckExplicitCalc(Scene):
         self.play(ShowCreation(glow_b), run_time=0.4)
         self.wait(2)
 
-        self.embed()
+class BottleneckInception(Scene):
+    """
+    Inception Module with 1×1 bottleneck convolutions that compress
+    channel depth before expensive 3×3 / 5×5 convolutions.
+    Run:  manimgl inception_bottleneck.py BottleneckInception
+    """
 
+    def construct(self):
+        ROW_Y   = [3.8, 0.8, -1.8, -5.0]
+        INPUT_X = -7.5
+        SPINE_X = -5.0
+        OUT_X   =  3.8
+        CELL    =  0.04
+        CAM_MID_X = -1.0
+
+        # ── Input ─────────────────────────────────────────────────
+        input_pos   = np.array([INPUT_X, 0, 0])
+        input_block = create_3d_cuboid(32, 32, 128, INPUT_COLOR, input_pos, CELL)
+        input_label = Text("32 x 32 x 128", font_size=30, weight=BOLD)
+        input_label.next_to(input_block, DOWN, buff=0.4)
+
+        self.camera.frame.shift(LEFT * 4.5).scale(0.85)
+        self.play(GrowFromCenter(input_block), Write(input_label), run_time=1.0)
+        self.wait(0.8)
+
+        inp_arr = make_arrow(
+            np.array([input_block.get_right()[0] + 0.05, 0, 0]),
+            np.array([SPINE_X, 0, 0]), WHITE, 3.0)
+        self.play(GrowArrow(inp_arr), run_time=0.5)
+        # Zoom out to comfortably fit input + all branch rows
+        self.play(self.camera.frame.animate
+            .move_to(np.array([CAM_MID_X, 0, 0]))
+            .set_height(10.0),
+            run_time=0.8)
+
+        # ── Branch specs ──────────────────────────────────────────
+        # stage tuple: (kernel_label, filter_label, color, card_width)
+        branches = [
+            # Branch 0 — 1×1 only
+            {
+                'stages': [("1x1", "32 filters", CONV1x1_COLOR, 1.8)],
+                'out_ch': 32, 'out_color': CONV1x1_COLOR,
+            },
+            # Branch 1 — 1×1 → 3×3
+            {
+                'stages': [
+                    ("1x1", "16 filters", CONV1x1_COLOR, 1.8),
+                    ("3x3", "64 filters", CONV3x3_COLOR, 1.8),
+                ],
+                'out_ch': 64, 'out_color': CONV3x3_COLOR,
+            },
+            # Branch 2 — 1×1 → 5×5
+            {
+                'stages': [
+                    ("1x1", "16 filters", CONV1x1_COLOR, 1.8),
+                    ("5x5", "32 filters", CONV5x5_COLOR, 1.8),
+                ],
+                'out_ch': 32, 'out_color': CONV5x5_COLOR,
+            },
+            # Branch 3 — 3×3 max-pool → 1×1 projection
+            {
+                'stages': [
+                    ("3x3 Pool", "same", POOL_COLOR, 2.4),
+                    ("1x1", "32 filters", CONV1x1_COLOR, 1.8),
+                ],
+                'out_ch': 32, 'out_color': POOL_COLOR,
+            },
+        ]
+
+        output_cuboids = []
+        output_labels  = []
+        all_branch_mobs = []
+
+        for i, branch in enumerate(branches):
+            y = ROW_Y[i]
+            stages = branch['stages']
+            n = len(stages)
+
+            # Camera pan — slide down to each branch, keep input visible
+            cam_y = y * 0.3
+            if i == 3:
+                # Branch 3 is far down — zoom out a touch more
+                self.play(self.camera.frame.animate
+                    .move_to(np.array([CAM_MID_X, cam_y, 0]))
+                    .set_height(11.5),
+                    run_time=0.6)
+            else:
+                self.play(self.camera.frame.animate
+                    .move_to(np.array([CAM_MID_X, cam_y, 0])),
+                    run_time=0.6)
+
+            # Spine vertical line
+            s_top = np.array([SPINE_X, ROW_Y[i - 1] if i == 3 else 0, 0])
+            s_bot = np.array([SPINE_X, y, 0])
+            vl = make_vert_line(s_top, s_bot, branch['out_color'])
+            self.play(ShowCreation(vl), run_time=0.25)
+            all_branch_mobs.append(vl)
+
+            # Card X positions
+            if n == 1:
+                cxs = [-0.8]
+            else:
+                cxs = [-2.8, 0.8]
+
+            prev_x = SPINE_X
+            last_card = None
+
+            for j, (kern, filt, col, cw) in enumerate(stages):
+                cx = cxs[j]
+
+                # Arrow to card
+                a = make_arrow(np.array([prev_x, y, 0]),
+                               np.array([cx - cw / 2 - 0.04, y, 0]), col, 3.0)
+                self.play(GrowArrow(a), run_time=0.25)
+                all_branch_mobs.append(a)
+
+                # Card
+                card, flbl = make_conv_card(kern, filt, col, cw, 1.1)
+                card.move_to(np.array([cx, y, 0]))
+                flbl.next_to(card, DOWN, buff=0.28)
+                self.play(FadeIn(card, scale=0.85),
+                          FadeIn(flbl, shift=UP * 0.1), run_time=0.4)
+                all_branch_mobs += [card, flbl]
+
+                prev_x = cx + cw / 2 + 0.08
+                last_card = card
+
+            # Arrow → output cuboid
+            out_pos = np.array([OUT_X, y, 0])
+            out_blk = create_3d_cuboid(32, 32, branch['out_ch'],
+                                        branch['out_color'], out_pos, CELL)
+            out_lbl = Text(f"32 x 32 x {branch['out_ch']}", font_size=28,
+                           weight=BOLD, color=branch['out_color'])
+            out_lbl.next_to(out_blk, DOWN, buff=0.4)
+
+            a2 = straight_arrow(last_card, out_blk, y, branch['out_color'])
+            self.play(GrowArrow(a2), run_time=0.25)
+            self.play(GrowFromCenter(out_blk), Write(out_lbl), run_time=0.55)
+            self.wait(0.15)
+
+            output_cuboids.append(out_blk)
+            output_labels.append(out_lbl)
+            all_branch_mobs.append(a2)
+
+        self.wait(1.5)
+
+        self.camera.frame.save_state()
+
+
+        # ── Concatenate ───────────────────────────────────────────
+        # Zoom out properly to show branches + concat stack
+        self.play(self.camera.frame.animate.scale(1.18).shift(RIGHT*2.95+UP*0.422), run_time=0.8)
+
+        self.camera.frame.save_state()
+
+        ch_counts = [32, 64, 32, 32]
+        s_colors  = [CONV1x1_COLOR, CONV3x3_COLOR, CONV5x5_COLOR, POOL_COLOR]
+        Z_IDX     = [1, -1, -2, -4]
+
+        fl_x, b_y = OUT_X + 2.0, -0.65
+        spos = []
+        for ch in ch_counts:
+            spos.append((fl_x, b_y))
+            dx, dy = stack_iso(ch)
+            fl_x += dx
+            b_y  += dy
+
+        tblocks = []
+        for idx, ch in enumerate(ch_counts):
+            g, _, _ = create_stack_block(ch, s_colors[idx], spos[idx][0], spos[idx][1])
+            g.set_z_index(Z_IDX[idx])
+            tblocks.append(g)
+
+        for idx, ob in enumerate(output_cuboids):
+            ob.set_z_index(Z_IDX[idx])
+
+        tot_x = fl_x - (OUT_X + 2.0) + FRONT_W
+        s_mid = np.array([(OUT_X + 2.0) + tot_x / 2, b_y / 2, 0.0])
+
+        ct = Text("Concatenate", font_size=60, weight=BOLD, color=CONCAT_COLOR)
+        ct.move_to(s_mid + UP * (b_y / 2 + FRONT_H / 2 + 0.9))
+        self.play(FadeIn(ct, shift=DOWN * 0.2), run_time=0.5)
+
+        self.play(
+            *[ReplacementTransform(output_cuboids[k], tblocks[k]) for k in range(4)],
+            *[FadeOut(ol) for ol in output_labels],
+            run_time=1.1)
+
+        sg = VGroup(*tblocks)
+        cdim = Text("32  x  32  x  160", font_size=57, weight=BOLD, color=CONCAT_COLOR)
+        cdim.next_to(sg, DOWN, buff=1.3)
+        self.play(Write(cdim), run_time=0.9)
+        self.play(FadeOut(ct), run_time=0.4)
+        self.wait(1.0)
+
+        # ── Total FLOPs (shown directly — no per-branch calc) ────
+        total_flops = Text("~ 35 Million FLOPs", font_size=64, weight=BOLD)
+        total_flops.set_color_by_gradient("#2ECC71", "#27AE60")
+        total_flops.next_to(cdim, DOWN, buff=1.2)
+
+        self.play(Write(total_flops), run_time=1.0)
+        box = SurroundingRectangle(total_flops, color="#00ff00", buff=0.25)
+        box.set_stroke(width=4)
+        self.play(ShowCreation(box), run_time=0.5)
+        self.wait(0.5)
+
+        red_label = Text("( ~5.3x less than naive! )",
+                         font_size=46, weight=BOLD, color="#E74C3C")
+        red_label.next_to(total_flops, DOWN, buff=0.6)
+        self.play(FadeIn(red_label, shift=UP * 0.15), run_time=0.8)
+
+        big_box = SurroundingRectangle(
+            VGroup(total_flops, red_label), color="#ff4444", buff=0.35)
+        big_box.set_stroke(width=4)
+        self.play(self.camera.frame.animate.shift(RIGHT*0.74) ,ReplacementTransform(box, big_box), run_time=0.6)
+        self.wait(3)
