@@ -725,6 +725,7 @@ class BottleneckExplicitCalc(Scene):
         self.play(ShowCreation(glow_b), run_time=0.4)
         self.wait(2)
 
+
 class BottleneckInception(Scene):
     """
     Inception Module with 1×1 bottleneck convolutions that compress
@@ -743,7 +744,7 @@ class BottleneckInception(Scene):
         # ── Input ─────────────────────────────────────────────────
         input_pos   = np.array([INPUT_X, 0, 0])
         input_block = create_3d_cuboid(32, 32, 128, INPUT_COLOR, input_pos, CELL)
-        input_label = Text("32 x 32 x 128", font_size=30, weight=BOLD)
+        input_label = Text("32x32x128", font_size=30, weight=BOLD)
         input_label.next_to(input_block, DOWN, buff=0.4)
 
         self.camera.frame.shift(LEFT * 4.5).scale(0.85)
@@ -762,27 +763,30 @@ class BottleneckInception(Scene):
 
         # ── Branch specs ──────────────────────────────────────────
         # stage tuple: (kernel_label, filter_label, color, card_width)
+        # inter_ch: if present, show intermediate cuboid after stage 0
         branches = [
             # Branch 0 — 1×1 only
             {
                 'stages': [("1x1", "32 filters", CONV1x1_COLOR, 1.8)],
                 'out_ch': 32, 'out_color': CONV1x1_COLOR,
             },
-            # Branch 1 — 1×1 → 3×3
+            # Branch 1 — 1×1 bottleneck → 3×3
             {
                 'stages': [
                     ("1x1", "16 filters", CONV1x1_COLOR, 1.8),
                     ("3x3", "64 filters", CONV3x3_COLOR, 1.8),
                 ],
                 'out_ch': 64, 'out_color': CONV3x3_COLOR,
+                'inter_ch': 16,
             },
-            # Branch 2 — 1×1 → 5×5
+            # Branch 2 — 1×1 bottleneck → 5×5
             {
                 'stages': [
                     ("1x1", "16 filters", CONV1x1_COLOR, 1.8),
                     ("5x5", "32 filters", CONV5x5_COLOR, 1.8),
                 ],
                 'out_ch': 32, 'out_color': CONV5x5_COLOR,
+                'inter_ch': 16,
             },
             # Branch 3 — 3×3 max-pool → 1×1 projection
             {
@@ -791,6 +795,7 @@ class BottleneckInception(Scene):
                     ("1x1", "32 filters", CONV1x1_COLOR, 1.8),
                 ],
                 'out_ch': 32, 'out_color': POOL_COLOR,
+                'inter_ch': 128,
             },
         ]
 
@@ -805,15 +810,16 @@ class BottleneckInception(Scene):
 
             # Camera pan — slide down to each branch, keep input visible
             cam_y = y * 0.3
+            cam_x = CAM_MID_X + 0.7 if 'inter_ch' in branch else CAM_MID_X
             if i == 3:
                 # Branch 3 is far down — zoom out a touch more
                 self.play(self.camera.frame.animate
-                    .move_to(np.array([CAM_MID_X, cam_y, 0]))
+                    .move_to(np.array([cam_x, cam_y, 0]))
                     .set_height(11.5),
                     run_time=0.6)
             else:
                 self.play(self.camera.frame.animate
-                    .move_to(np.array([CAM_MID_X, cam_y, 0])),
+                    .move_to(np.array([cam_x, cam_y, 0])),
                     run_time=0.6)
 
             # Spine vertical line
@@ -823,9 +829,13 @@ class BottleneckInception(Scene):
             self.play(ShowCreation(vl), run_time=0.25)
             all_branch_mobs.append(vl)
 
-            # Card X positions
+            # Card X positions — wider spacing when intermediate cuboid needed
             if n == 1:
                 cxs = [-0.8]
+            elif i == 3:
+                cxs = [-3.0, 4.5]
+            elif 'inter_ch' in branch:
+                cxs = [-3.0, 3.0]
             else:
                 cxs = [-2.8, 0.8]
 
@@ -847,23 +857,44 @@ class BottleneckInception(Scene):
                 flbl.next_to(card, DOWN, buff=0.28)
                 self.play(FadeIn(card, scale=0.85),
                           FadeIn(flbl, shift=UP * 0.1), run_time=0.4)
+                self.wait(2)
                 all_branch_mobs += [card, flbl]
 
-                prev_x = cx + cw / 2 + 0.08
+                # Intermediate cuboid after 1×1 bottleneck
+                if j == 0 and 'inter_ch' in branch:
+                    ich = branch['inter_ch']
+                    mid_x = (cxs[0] + cxs[1]) / 2
+                    mid_pos = np.array([mid_x, y, 0])
+                    mid_blk = create_3d_cuboid(32, 32, ich, col,
+                                               mid_pos, CELL)
+                    mid_lbl = Text(f"32x32x{ich}", font_size=28,
+                                   weight=BOLD, color=col)
+                    mid_lbl.next_to(mid_blk, DOWN, buff=0.4)
+                    a_mid = straight_arrow(card, mid_blk, y, col)
+                    self.play(GrowArrow(a_mid), run_time=0.2)
+                    self.play(GrowFromCenter(mid_blk),
+                              Write(mid_lbl), run_time=0.4)
+                    self.wait(2)
+                    all_branch_mobs += [a_mid, mid_blk, mid_lbl]
+                    prev_x = mid_blk.get_right()[0] + 0.08
+                else:
+                    prev_x = cx + cw / 2 + 0.08
+
                 last_card = card
 
             # Arrow → output cuboid
-            out_pos = np.array([OUT_X, y, 0])
+            branch_out_x = 7.5 if i == 3 else (6.0 if 'inter_ch' in branch else OUT_X)
+            out_pos = np.array([branch_out_x, y, 0])
             out_blk = create_3d_cuboid(32, 32, branch['out_ch'],
                                         branch['out_color'], out_pos, CELL)
-            out_lbl = Text(f"32 x 32 x {branch['out_ch']}", font_size=28,
+            out_lbl = Text(f"32x32x{branch['out_ch']}", font_size=28,
                            weight=BOLD, color=branch['out_color'])
             out_lbl.next_to(out_blk, DOWN, buff=0.4)
 
             a2 = straight_arrow(last_card, out_blk, y, branch['out_color'])
             self.play(GrowArrow(a2), run_time=0.25)
             self.play(GrowFromCenter(out_blk), Write(out_lbl), run_time=0.55)
-            self.wait(0.15)
+            self.wait(2)
 
             output_cuboids.append(out_blk)
             output_labels.append(out_lbl)
@@ -872,6 +903,7 @@ class BottleneckInception(Scene):
         self.wait(1.5)
 
         self.camera.frame.save_state()
+
 
 
         # ── Concatenate ───────────────────────────────────────────
@@ -914,17 +946,20 @@ class BottleneckInception(Scene):
             run_time=1.1)
 
         sg = VGroup(*tblocks)
-        cdim = Text("32  x  32  x  160", font_size=57, weight=BOLD, color=CONCAT_COLOR)
+        cdim = Text("32x32x160", font_size=57, weight=BOLD, color=CONCAT_COLOR)
         cdim.next_to(sg, DOWN, buff=1.3)
         self.play(Write(cdim), run_time=0.9)
         self.play(FadeOut(ct), run_time=0.4)
         self.wait(1.0)
 
-        # ── Total FLOPs (shown directly — no per-branch calc) ────
+        # ── Total FLOPs — placed far right, camera pans there ────
         total_flops = Text("~ 35 Million FLOPs", font_size=64, weight=BOLD)
         total_flops.set_color_by_gradient("#2ECC71", "#27AE60")
-        total_flops.next_to(cdim, DOWN, buff=1.2)
+        total_flops.move_to(sg.get_center() + RIGHT * 15)
 
+        self.play(
+            self.camera.frame.animate.move_to(total_flops.get_center()).set_height(8.0),
+            run_time=0.8)
         self.play(Write(total_flops), run_time=1.0)
         box = SurroundingRectangle(total_flops, color="#00ff00", buff=0.25)
         box.set_stroke(width=4)
@@ -939,5 +974,7 @@ class BottleneckInception(Scene):
         big_box = SurroundingRectangle(
             VGroup(total_flops, red_label), color="#ff4444", buff=0.35)
         big_box.set_stroke(width=4)
-        self.play(self.camera.frame.animate.shift(RIGHT*0.74) ,ReplacementTransform(box, big_box), run_time=0.6)
+        self.play(ReplacementTransform(box, big_box), run_time=0.6)
         self.wait(3)
+
+
