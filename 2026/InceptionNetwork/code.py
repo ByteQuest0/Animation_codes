@@ -558,3 +558,172 @@ class NaiveInceptionCost(Scene):
 
         self.embed()
 
+
+class BottleneckExplicitCalc(Scene):
+
+
+    def construct(self):
+        CELL   = 0.04
+        NAIVE_Y = 2.5
+        BTN_Y   = -2.2
+
+        self.camera.frame.shift(UP*2.3)
+
+
+        # ══════════════════════════════════════════════════════════
+        #  TOP ROW — Naive 5×5  (show directly — no verbose calc)
+        # ══════════════════════════════════════════════════════════
+
+        inp_n = create_3d_cuboid(28, 28, 128, INPUT_COLOR,
+                                  np.array([-5.5, NAIVE_Y, 0]), CELL)
+        inp_n_lbl = Text("32x32x128", font_size=30, weight=BOLD)
+        inp_n_lbl.next_to(inp_n, DOWN, buff=0.3)
+        self.play(GrowFromCenter(inp_n), Write(inp_n_lbl), run_time=0.65)
+
+
+        card_n, flbl_n = make_conv_card("5x5", "32 filters",
+                                         CONV5x5_COLOR, 1.8, 1.0)
+        card_n.move_to(np.array([-1.5, NAIVE_Y, 0]))
+        flbl_n.next_to(card_n, DOWN, buff=0.25)
+        a1_n = straight_arrow(inp_n, card_n, NAIVE_Y, CONV5x5_COLOR)
+        self.play(GrowArrow(a1_n), run_time=0.3)
+        self.play(FadeIn(card_n, scale=0.85),
+                  FadeIn(flbl_n, shift=UP * 0.1), run_time=0.45)
+
+        out_n = create_3d_cuboid(28, 28, 32, CONV5x5_COLOR,
+                                  np.array([2.2, NAIVE_Y, 0]), CELL)
+        out_n_lbl = Text("32x32x32", font_size=30, weight=BOLD,
+                          color=CONV5x5_COLOR)
+        out_n_lbl.next_to(out_n, DOWN, buff=0.3)
+        a2_n = straight_arrow(card_n, out_n, NAIVE_Y, CONV5x5_COLOR)
+        self.play(GrowArrow(a2_n), run_time=0.3)
+        self.play(GrowFromCenter(out_n), Write(out_n_lbl), run_time=0.55)
+
+        # ── Direct FLOPs reveal (no multiplication shown) ────────
+        result_n = Text("~ 105 M", font_size=52, weight=BOLD)
+        result_n.set_color_by_gradient("#FF6B6B", "#FF0000")
+        result_n.move_to(np.array([6.5, NAIVE_Y, 0]))
+
+        glow_n = SurroundingRectangle(result_n, color="#FF4444", buff=0.25)
+        glow_n.set_stroke(width=4)
+        glow_n.set_fill("#FF0000", opacity=0.10)
+
+        self.play(FadeIn(result_n, scale=0.6), self.camera.frame.animate.shift(RIGHT).scale(1.2) ,run_time=0.55)
+        self.play(ShowCreation(glow_n), run_time=0.4)
+        self.wait(1.6)
+
+        self.camera.frame.save_state()
+
+        # ══════════════════════════════════════════════════════════
+        #  DIVIDER — thin horizontal separator
+        # ══════════════════════════════════════════════════════════
+        divider = Line(
+            np.array([-500.0, 0.2, 0]),
+            np.array([ 500.0, 0.2, 0]),
+            stroke_color="#444444", stroke_width=1.5)
+        self.play(ShowCreation(divider), run_time=0.3)
+        self.play(self.camera.frame.animate.shift(DOWN*2.66+LEFT))
+
+        # ══════════════════════════════════════════════════════════
+        #  BOTTOM ROW — 1×1 Bottleneck → 5×5  (tighter card padding)
+        # ══════════════════════════════════════════════════════════
+
+        inp_b = create_3d_cuboid(28, 28, 128, INPUT_COLOR,
+                                  np.array([-7.0, BTN_Y, 0]), CELL)
+        inp_b_lbl = Text("32x32x128", font_size=30, weight=BOLD)
+        inp_b_lbl.next_to(inp_b, DOWN, buff=0.45)
+        self.play(GrowFromCenter(inp_b), Write(inp_b_lbl), run_time=0.6)
+        self.wait(2)
+
+        # 1×1 card
+        card_b1, flbl_b1 = make_conv_card("1x1", "16 filters",
+                                            CONV1x1_COLOR, 1.2, 1.0)
+        card_b1.move_to(np.array([-3.5, BTN_Y, 0]))
+        flbl_b1.next_to(card_b1, DOWN, buff=0.55)
+        a1_b = straight_arrow(inp_b, card_b1, BTN_Y, CONV1x1_COLOR)
+        self.play(GrowArrow(a1_b), run_time=0.25)
+        self.play(FadeIn(card_b1, scale=0.85),
+                  FadeIn(flbl_b1, shift=UP * 0.1), run_time=0.4)
+
+        # "Bottleneck" label — plain yellow text below "16 filters"
+        btn_card_label = Text("Bottleneck", font_size=30, weight=BOLD,
+                               color=YELLOW).set_color(YELLOW)
+        btn_card_label.next_to(flbl_b1, DOWN, buff=0.36)
+        self.play(FadeIn(btn_card_label, scale=0.85), run_time=0.35)
+        self.wait(2)
+
+        # Compressed intermediate cuboid
+        mid_b = create_3d_cuboid(28, 28, 16, CONV1x1_COLOR,
+                                  np.array([-1, BTN_Y, 0]), CELL)
+        mid_b_lbl = Text("32x32x16", font_size=28, weight=BOLD,
+                          color=CONV1x1_COLOR)
+        mid_b_lbl.next_to(mid_b, DOWN, buff=0.5)
+        a2_b = straight_arrow(card_b1, mid_b, BTN_Y, CONV1x1_COLOR)
+        self.play(GrowArrow(a2_b), run_time=0.25)
+        self.play(GrowFromCenter(mid_b), Write(mid_b_lbl), run_time=0.5)
+        self.wait(2)
+
+
+        # FLOPs for 1×1 stage — direct number above
+        flops_b1 = Text("2,097,152", font_size=26, weight=BOLD,
+                         color=CONV1x1_COLOR).scale(1.5)
+        flops_b1.move_to(np.array([-2.35, BTN_Y + 1.85, 0]))
+        self.play(FadeIn(flops_b1, shift=DOWN * 0.12), run_time=0.3)
+        self.wait(2)
+
+        # 5×5 card
+        card_b2, flbl_b2 = make_conv_card("5x5", "32 filters",
+                                            CONV5x5_COLOR, 1.2, 1.0)
+        card_b2.move_to(np.array([1.8, BTN_Y, 0]))
+        flbl_b2.next_to(card_b2, DOWN, buff=0.55)
+        a3_b = straight_arrow(mid_b, card_b2, BTN_Y, CONV5x5_COLOR)
+        self.play(GrowArrow(a3_b), run_time=0.25)
+        self.play(FadeIn(card_b2, scale=0.85),
+                  FadeIn(flbl_b2, shift=UP * 0.1), run_time=0.4)
+        self.wait(2)
+
+        out_b = create_3d_cuboid(28, 28, 32, CONV5x5_COLOR,
+                                  np.array([4.6, BTN_Y, 0]), CELL)
+        out_b_lbl = Text("32x32x32", font_size=30, weight=BOLD,
+                          color=CONV5x5_COLOR)
+        out_b_lbl.next_to(out_b, DOWN, buff=0.5)
+        a4_b = straight_arrow(card_b2, out_b, BTN_Y, CONV5x5_COLOR)
+        self.play(GrowArrow(a4_b), run_time=0.25)
+        self.play(GrowFromCenter(out_b), Write(out_b_lbl), run_time=0.55)
+        self.wait(2)
+
+        # FLOPs for 5×5 stage — direct number above
+        flops_b2 = Text("13,107,200", font_size=26, weight=BOLD,
+                          color=CONV5x5_COLOR).scale(1.5)
+        flops_b2.move_to(np.array([3.3, BTN_Y + 1.85, 0]))
+        self.play(FadeIn(flops_b2, shift=DOWN * 0.12), run_time=0.3)
+        self.wait(2)
+
+        # Plus sign scaled up
+        plus_sign = Text("+", font_size=30, weight=BOLD, color=WHITE).scale(2)
+        plus_sign.move_to(np.array([0.49, BTN_Y + 1.85, 0]))
+        self.play(FadeIn(plus_sign, scale=0.8), run_time=0.2)
+
+        # Sum underline
+        underline = Line(
+            np.array([flops_b1.get_left()[0] - 0.15, BTN_Y + 1.35, 0]),
+            np.array([flops_b2.get_right()[0] + 0.15, BTN_Y + 1.35, 0]),
+            stroke_color="#AAAAAA", stroke_width=2)
+        self.play(ShowCreation(underline), run_time=0.3)
+        self.wait(2)
+
+        # ── Direct total FLOPs for bottleneck (compact) ─────────────
+        result_b = Text("~ 15.2 M", font_size=52, weight=BOLD)
+        result_b.set_color_by_gradient("#55FF77", "#00CC44")
+        result_b.move_to(np.array([8.44, BTN_Y, 0]))
+
+        glow_b = SurroundingRectangle(result_b, color="#00FF55", buff=0.25)
+        glow_b.set_stroke(width=4)
+        glow_b.set_fill("#00AA33", opacity=0.10)
+
+        self.play(FadeIn(result_b, scale=0.6), self.camera.frame.animate.scale(1.14).shift(RIGHT*1.54) ,run_time=0.55)
+        self.play(ShowCreation(glow_b), run_time=0.4)
+        self.wait(2)
+
+        self.embed()
+
