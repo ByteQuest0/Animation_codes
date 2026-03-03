@@ -935,4 +935,216 @@ class DepthwiseSeparableConv(Scene):
         self.wait(2.0)
 
 
+class MobileNetv1(Scene):
+    def construct(self):
+        CLR = ["#E74C3C", "#27AE60", "#2980B9"]
+        DW_CLR = ["#E67E22", "#D35400", "#C0392B"]
+        PW_CLR = ["#9B59B6", "#8E44AD", "#7D3C98"]
+
+        self.camera.frame.set_height(10).move_to(ORIGIN)
+
+        CS = 0.28
+        OFF = np.array([0.35, -0.22, 0.0])
+
+        # ── TITLE (high above everything) ──
+        title = Text("MobileNet V1", font_size=60, weight=BOLD)
+        title.to_edge(UP, buff=0.3)
+
+        # ═══════════════════════════════════════════
+        # INPUT STACK  (represents 224×224×3)
+        # ═══════════════════════════════════════════
+        inp_stack = VGroup()
+        for i in range(3):
+            bg = Rectangle(width=5 * CS, height=5 * CS)
+            bg.set_fill(CLR[i], opacity=1.0)
+            bg.set_stroke(width=0)
+            g = make_grid(5, 5, cell_size=CS, fill_color=CLR[i],
+                          fill_opacity=1.0, stroke_color=CLR[i],
+                          stroke_width=0)
+            bg.move_to(g.get_center())
+            layer = VGroup(bg, g)
+            layer.shift(i * OFF)
+            layer.set_z_index(i)
+            inp_stack.add(layer)
+        inp_stack.move_to(LEFT * 5.5 + DOWN * 0.5)
+
+        inp_dim = Text("224 x 224 x 3", font_size=35, weight=BOLD, color=WHITE)
+        inp_dim.next_to(inp_stack, DOWN, buff=0.35)
+        inp_tag = Text("Input", font_size=40, weight=BOLD, color=GREY_A)
+        inp_tag.next_to(inp_dim, DOWN, buff=0.35)
+
+        # ═══════════════════════════════════════════
+        # DEPTHWISE 3×3 FILTER STACK  (opacity=1)
+        # ═══════════════════════════════════════════
+        dw_stack = VGroup()
+        for i in range(3):
+            r = Rectangle(width=3 * CS, height=3 * CS)
+            r.set_fill(DW_CLR[i], opacity=1.0)
+            r.set_stroke(WHITE, width=1.5)
+            r.shift(i * OFF * 0.7)
+            r.set_z_index(i)
+            dw_stack.add(r)
+        dw_stack.move_to(LEFT * 1.0 + DOWN * 0.5)
+
+        dw_dim = Text("3 x 3 Depthwise", font_size=30, weight=BOLD, color=WHITE)
+        dw_dim.next_to(dw_stack, DOWN, buff=0.35)
+
+        # BN + ReLU label above DW
+        dw_bn = Text("BN + ReLU", font_size=32, weight=BOLD, color="#2ECC71")
+        dw_bn.next_to(dw_stack, UP, buff=0.42)
+
+        # ═══════════════════════════════════════════
+        # 1×1 POINTWISE CONV — CUBOID
+        # ═══════════════════════════════════════════
+        pw_cuboid = make_cuboid_block(1, 1, 3, PW_CLR,
+                                       pos=ORIGIN, cs=0.55)
+        for part in pw_cuboid:
+            for sub in part:
+                sub.set_fill(opacity=1.0)
+        pw_cuboid.move_to(RIGHT * 2.8 + DOWN * 0.5)
+
+        pw_dim = Text("1 x 1 Conv", font_size=30, weight=BOLD, color=WHITE)
+        pw_dim.next_to(pw_cuboid, DOWN, buff=0.35)
+
+        # BN + ReLU label above PW
+        pw_bn = Text("BN + ReLU", font_size=32, weight=BOLD, color="#2ECC71")
+        pw_bn.next_to(pw_cuboid, UP, buff=0.42)
+
+        # ═══════════════════════════════════════════
+        # HORIZONTAL ARROWS  (precisely same y)
+        # ═══════════════════════════════════════════
+        y_arr = inp_stack.get_center()[1]
+
+        arr1 = Arrow(
+            np.array([inp_stack.get_right()[0] + 0.2, y_arr, 0]),
+            np.array([dw_stack.get_left()[0] - 0.2, y_arr, 0]),
+            buff=0, thickness=3, color=WHITE,
+        )
+        arr2 = Arrow(
+            np.array([dw_stack.get_right()[0] + 0.2, y_arr, 0]),
+            np.array([pw_cuboid.get_left()[0] - 0.2, y_arr, 0]),
+            buff=0, thickness=3, color=WHITE,
+        )
+
+        # ═══════════════════════════════════════════
+        # ROUNDED RECTANGLE  (encloses DW + BN + arrow + 1×1 + BN)
+        # ═══════════════════════════════════════════
+        box_group = VGroup(dw_stack, pw_cuboid, arr2, dw_dim, pw_dim,
+                           dw_bn, pw_bn)
+        bl = box_group.get_left()[0] - 0.5
+        br = box_group.get_right()[0] + 0.5
+        bt = box_group.get_top()[1] + 0.4
+        bb = box_group.get_bottom()[1] - 0.35
+        box = RoundedRectangle(
+            width=br - bl, height=bt - bb,
+            corner_radius=0.25, stroke_width=3, stroke_color=YELLOW,
+        )
+        box.set_fill(YELLOW, opacity=0.05)
+        box.move_to(np.array([(bl + br) / 2, (bt + bb) / 2, 0]))
+
+        times_label = Text(
+            "x 13", font_size=58, weight=BOLD, color=YELLOW,
+        )
+        times_label.next_to(box, DOWN, buff=0.62)
+
+        # ═══════════════════════════════════════════
+        # TAIL:  Avg Pool → FC → Softmax
+        # ═══════════════════════════════════════════
+        TAIL_CLR = "#1ABC9C"
+        tail_fs = 30
+        TAIL_BUFF = 1.1   # generous spacing
+
+        avg_pool = Text("Avg Pool", font_size=tail_fs, weight=BOLD,
+                         color=TAIL_CLR)
+        fc_layer = Text("FC", font_size=tail_fs, weight=BOLD,
+                         color=TAIL_CLR)
+        softmax = Text("Softmax", font_size=tail_fs, weight=BOLD,
+                        color=TAIL_CLR)
+
+        # Position them in a row after the box
+        avg_pool.next_to(box, RIGHT, buff=TAIL_BUFF)
+        avg_pool.set_y(y_arr)
+        fc_layer.next_to(avg_pool, RIGHT, buff=TAIL_BUFF)
+        fc_layer.set_y(y_arr)
+        softmax.next_to(fc_layer, RIGHT, buff=TAIL_BUFF)
+        softmax.set_y(y_arr)
+
+        # Small rounded boxes behind each tail label
+        def tail_box(label):
+            b = SurroundingRectangle(label, buff=0.18, color=TAIL_CLR)
+            b.set_fill(TAIL_CLR, opacity=0.1)
+            b.round_corners(0.12)
+            return b
+
+        avg_box = tail_box(avg_pool)
+        fc_box = tail_box(fc_layer)
+        sm_box = tail_box(softmax)
+
+        # Arrows between tail elements (horizontal)
+        arr3 = Arrow(
+            np.array([box.get_right()[0] + 0.08, y_arr, 0]),
+            np.array([avg_box.get_left()[0] - 0.08, y_arr, 0]),
+            buff=0, thickness=3, color=WHITE,
+        )
+        arr4 = Arrow(
+            np.array([avg_box.get_right()[0] + 0.08, y_arr, 0]),
+            np.array([fc_box.get_left()[0] - 0.08, y_arr, 0]),
+            buff=0, thickness=3, color=WHITE,
+        )
+        arr5 = Arrow(
+            np.array([fc_box.get_right()[0] + 0.08, y_arr, 0]),
+            np.array([sm_box.get_left()[0] - 0.08, y_arr, 0]),
+            buff=0, thickness=3, color=WHITE,
+        )
+
+        # ═══════════════════════════════════════════
+        # ANIMATIONS
+        # ═══════════════════════════════════════════
+        self.play(Write(title), run_time=0.8)
+        self.wait(0.4)
+
+        # Input
+        self.play(GrowFromCenter(inp_stack), Write(inp_dim),
+                  FadeIn(inp_tag), run_time=0.8)
+
+        self.play(self.camera.frame.animate.scale(0.7).shift(LEFT*2+DOWN))
+
+        self.wait(2)
+
+
+        # Arrow → DW filter + BN/ReLU
+        self.play(GrowArrow(arr1), run_time=0.5)
+        self.play(GrowFromCenter(dw_stack), Write(dw_dim),
+                  FadeIn(dw_bn), run_time=0.7)
+
+        # Arrow → 1×1 cuboid + BN/ReLU
+        self.play(GrowArrow(arr2), self.camera.frame.animate.shift(RIGHT*2) ,run_time=0.5)
+        self.play(GrowFromCenter(pw_cuboid), Write(pw_dim),
+                  FadeIn(pw_bn), run_time=0.7)
+        self.wait(2)
+
+        # Rounded box + ×13
+        self.play(ShowCreation(box), run_time=0.6)
+        self.play(Write(times_label), run_time=0.5)
+        self.wait(1.0)
+
+        # Pan camera right to reveal tail
+        self.play(
+            self.camera.frame.animate.shift(RIGHT * 5),
+            run_time=0.8,
+        )
+
+        # Tail: Avg Pool → FC → Softmax
+        self.play(GrowArrow(arr3), run_time=0.4)
+        self.play(FadeIn(avg_box), Write(avg_pool), run_time=0.5)
+        self.play(GrowArrow(arr4), run_time=0.4)
+        self.play(FadeIn(fc_box), Write(fc_layer), run_time=0.5)
+        self.play(GrowArrow(arr5), self.camera.frame.animate.shift(RIGHT*2) ,run_time=0.4)
+        self.play(FadeIn(sm_box), Write(softmax), run_time=0.5)
+        self.wait(2.0)
+
+        self.play(self.camera.frame.animate.shift(LEFT*4.61+UP).scale(1.63), title.animate.scale(1.7).shift(RIGHT*2.3))
+
+        self.wait(2)
+
 
