@@ -1148,3 +1148,261 @@ class MobileNetv1(Scene):
         self.wait(2)
 
 
+
+class MobileNetV2(Scene):
+    def construct(self):
+        EXP_CLR  = "#F39C12"
+        DW_CLR   = "#1ABC9C"
+        PW_CLR   = "#8E44AD"
+        SKIP_CLR = "#2ECC71"
+        TAIL_CLR = "#1ABC9C"
+        CS  = 0.28
+        OFF = np.array([0.35, -0.22, 0.0])
+
+        self.camera.frame.set_height(10).move_to(ORIGIN)
+
+        # ── TITLE ──────────────────────────────────────────────────────────────
+        title = Text("MobileNet V2", font_size=74, weight=BOLD).set_color("#F1C40F")
+        title.to_edge(UP, buff=0.3)
+
+        # ── INPUT STACK  224x224x3 ─────────────────────────────────────────────
+        CLR3 = ["#E74C3C", "#27AE60", "#2980B9"]
+        inp_stack = VGroup()
+        for i in range(3):
+            bg = Rectangle(width=5 * CS, height=5 * CS)
+            bg.set_fill(CLR3[i], opacity=1.0).set_stroke(width=0)
+            g = make_grid(5, 5, cell_size=CS, fill_color=CLR3[i],
+                          fill_opacity=1.0, stroke_color=CLR3[i], stroke_width=0)
+            bg.move_to(g.get_center())
+            layer = VGroup(bg, g)
+            layer.shift(i * OFF).set_z_index(i)
+            inp_stack.add(layer)
+        inp_stack.move_to(LEFT * 7.5 + DOWN * 0.5)
+
+        inp_dim = Text("224x224x3", font_size=35, weight=BOLD, color=WHITE)
+        inp_dim.next_to(inp_stack, DOWN, buff=0.35)
+        inp_tag = Text("Input", font_size=40, weight=BOLD, color=GREY_A)
+        inp_tag.next_to(inp_dim, DOWN, buff=0.35)
+
+        # ── EXPAND 1x1 CONV — cuboid (like pointwise) ─────────────────────────
+        EXP_CLR3 = [EXP_CLR, "#D68910", "#B9770E"]
+        exp_cuboid = make_cuboid_block(1, 1, 3, EXP_CLR3, pos=ORIGIN, cs=0.55)
+        for part in exp_cuboid:
+            for sub in part:
+                sub.set_fill(opacity=1.0)
+        exp_cuboid.move_to(LEFT * 3.0 + DOWN * 0.5)
+
+        exp_dim = Text("1x1x3", font_size=38, weight=BOLD, color=EXP_CLR)
+        exp_dim.next_to(exp_cuboid, DOWN, buff=0.30)
+        exp_n   = Text("(N filters)", font_size=32, weight=BOLD, color=EXP_CLR)
+        exp_n.next_to(exp_dim, DOWN, buff=0.42)
+        exp_bn  = Text("BN + ReLU6", font_size=36, weight=BOLD, color=SKIP_CLR)
+        exp_bn.next_to(exp_cuboid, UP, buff=0.42)
+
+        # ── DEPTHWISE 3x3 ──────────────────────────────────────────────────────
+        DW_CLR3  = [DW_CLR, "#17A589", "#148F77"]
+        dw_stack = VGroup()
+        for i in range(3):
+            r = Rectangle(width=3 * CS, height=3 * CS)
+            r.set_fill(DW_CLR3[i], opacity=1.0).set_stroke(WHITE, width=1.5)
+            r.shift(i * OFF * 0.7).set_z_index(i)
+            dw_stack.add(r)
+        dw_stack.move_to(RIGHT * 0.8 + DOWN * 0.5)
+
+        dw_dim = Text("3x3 DW", font_size=38, weight=BOLD, color=DW_CLR)
+        dw_dim.next_to(dw_stack, DOWN, buff=0.30)
+        dw_n   = Text("(N filters)", font_size=32, weight=BOLD, color=DW_CLR)
+        dw_n.next_to(dw_dim, DOWN, buff=0.42)
+        dw_bn  = Text("BN + ReLU6", font_size=36, weight=BOLD, color=SKIP_CLR)
+        dw_bn.next_to(dw_stack, UP, buff=0.42)
+
+        # ── PROJECT 1x1 CONV — cuboid ──────────────────────────────────────────
+        PW_CLR3   = [PW_CLR, "#7D3C98", "#6C3483"]
+        pw_cuboid = make_cuboid_block(1, 1, 3, PW_CLR3, pos=ORIGIN, cs=0.55)
+        for part in pw_cuboid:
+            for sub in part:
+                sub.set_fill(opacity=1.0)
+        pw_cuboid.move_to(RIGHT * 4.4 + DOWN * 0.5)
+
+        pw_dim = Text("1x1xN", font_size=38, weight=BOLD, color=PW_CLR)
+        pw_dim.next_to(pw_cuboid, DOWN, buff=0.30)
+        pw_n   = Text("(N' filters)", font_size=32, weight=BOLD, color=PW_CLR)
+        pw_n.next_to(pw_dim, DOWN, buff=0.42)
+        pw_bn  = Text("BN", font_size=36, weight=BOLD, color="#2ECC71")
+        pw_bn.next_to(pw_cuboid, UP, buff=0.42)
+
+        # ── HORIZONTAL ARROWS ──────────────────────────────────────────────────
+        y_arr = inp_stack.get_center()[1]
+
+        # Residual anchor x-positions
+        arr1_x_mid = (inp_stack.get_right()[0] + exp_cuboid.get_left()[0]) / 2
+        # right leg lands at midpoint of arr4 (between pw_cuboid right and avg_pool)
+        skip_x_r   = pw_cuboid.get_right()[0] + 1.3
+
+        arr1 = Arrow(
+            np.array([inp_stack.get_right()[0]  + 0.25, y_arr, 0]),
+            np.array([exp_cuboid.get_left()[0]  - 0.25, y_arr, 0]),
+            buff=0, thickness=3, color=WHITE)
+        arr2 = Arrow(
+            np.array([exp_cuboid.get_right()[0] + 0.25, y_arr, 0]),
+            np.array([dw_stack.get_left()[0]    - 0.25, y_arr, 0]),
+            buff=0, thickness=3, color=WHITE)
+        arr3 = Arrow(
+            np.array([dw_stack.get_right()[0]   + 0.25, y_arr, 0]),
+            np.array([pw_cuboid.get_left()[0]   - 0.25, y_arr, 0]),
+            buff=0, thickness=3, color=WHITE)
+
+        # ── ORTHOGONAL RESIDUAL (fully inside block) ───────────────────────────
+        SKIP_H   = 2.2
+        skip_top = y_arr + SKIP_H
+
+        seg_up    = Line(
+            np.array([arr1_x_mid, y_arr,    0]),
+            np.array([arr1_x_mid, skip_top, 0]),
+            stroke_width=4, color=SKIP_CLR)
+        seg_right = Line(
+            np.array([arr1_x_mid, skip_top, 0]),
+            np.array([skip_x_r,   skip_top, 0]),
+            stroke_width=4, color=SKIP_CLR)
+        seg_down  = Line(
+            np.array([skip_x_r, skip_top, 0]),
+            np.array([skip_x_r, y_arr,    0]),
+            stroke_width=4, color=SKIP_CLR)
+        skip_lbl  = Text("Residual", font_size=46, weight=BOLD, color=SKIP_CLR).set_color(SKIP_CLR)
+        skip_lbl.move_to(np.array([(arr1_x_mid + skip_x_r) / 2, skip_top + 0.35, 0])).shift(UP*0.2)
+
+        # ── BOUNDING BOX — contains all ops + residual lines ─────────────────
+        box_inner = VGroup(exp_cuboid, dw_stack, pw_cuboid,
+                           arr2, arr3,
+                           exp_dim, exp_n, dw_dim, dw_n, pw_dim, pw_n,
+                           exp_bn,  dw_bn,  pw_bn)
+        bl = min(box_inner.get_left()[0], arr1_x_mid) - 0.55
+        br = skip_x_r + 0.55   # wide enough to enclose right residual leg
+        bt = skip_top + 1.0
+        bb = box_inner.get_bottom()[1] - 0.35
+        box = RoundedRectangle(
+            width=br - bl, height=bt - bb,
+            corner_radius=0.25, stroke_width=3, stroke_color=YELLOW)
+        box.set_fill(YELLOW, opacity=0.05)
+        box.move_to(np.array([(bl + br) / 2, (bt + bb) / 2, 0]))
+
+        times_label = Text("x 17", font_size=80, weight=BOLD, color=YELLOW)
+        times_label.next_to(box, DOWN, buff=0.62)
+
+        # ── TAIL: Avg Pool → FC → Softmax ──────────────────────────────────────
+        TAIL_BUFF = 1.8
+        avg_pool = Text("Avg Pool", font_size=30, weight=BOLD, color=TAIL_CLR)
+        fc_layer = Text("FC",       font_size=30, weight=BOLD, color=TAIL_CLR)
+        softmax  = Text("Softmax",  font_size=30, weight=BOLD, color=TAIL_CLR)
+
+        avg_pool.next_to(box, RIGHT, buff=TAIL_BUFF).set_y(y_arr)
+        fc_layer.next_to(avg_pool, RIGHT, buff=TAIL_BUFF).set_y(y_arr)
+        softmax .next_to(fc_layer, RIGHT, buff=TAIL_BUFF).set_y(y_arr)
+
+        def tail_box(label):
+            b = SurroundingRectangle(label, buff=0.18, color=TAIL_CLR)
+            b.set_fill(TAIL_CLR, opacity=0.1)
+            b.round_corners(0.12)
+            return b
+
+        avg_box = tail_box(avg_pool)
+        fc_box  = tail_box(fc_layer)
+        sm_box  = tail_box(softmax)
+
+        arr4 = Arrow(np.array([pw_cuboid.get_right()[0],    y_arr, 0]),
+                     np.array([avg_box.get_left()[0] - 0.08, y_arr, 0]),
+                     buff=0, thickness=3, color=WHITE)
+        arr5 = Arrow(np.array([avg_box.get_right()[0]  + 0.08, y_arr, 0]),
+                     np.array([fc_box.get_left()[0]    - 0.08, y_arr, 0]),
+                     buff=0, thickness=3, color=WHITE)
+        arr6 = Arrow(np.array([fc_box.get_right()[0]   + 0.08, y_arr, 0]),
+                     np.array([sm_box.get_left()[0]    - 0.08, y_arr, 0]),
+                     buff=0, thickness=3, color=WHITE)
+
+        # ══════════════════════════════════════════════════════════════════════
+        # ANIMATIONS
+        # ══════════════════════════════════════════════════════════════════════
+        self.play(Write(title), run_time=0.8)
+        self.wait(0.4)
+
+
+        # Input
+        self.play(GrowFromCenter(inp_stack), Write(inp_dim), FadeOut(title), 
+                  self.camera.frame.animate.scale(0.78).shift(LEFT * 2.65+DOWN*1.07),
+                  FadeIn(inp_tag), run_time=0.8)
+
+        self.wait(1.5)
+
+        self.camera.frame.save_state()
+
+        # → Expand 1x1 cuboid
+        self.play(GrowArrow(arr1), self.camera.frame.animate.scale(0.99) ,run_time=0.5)
+        self.play(GrowFromCenter(exp_cuboid), Write(exp_dim),
+                  FadeIn(exp_n), FadeIn(exp_bn), run_time=0.7)
+
+
+        self.wait(2)
+
+
+        # → Depthwise 3x3
+        self.play(GrowArrow(arr2),
+                  self.camera.frame.animate.shift(RIGHT * 1.8),
+                  run_time=0.5)
+        self.play(GrowFromCenter(dw_stack), Write(dw_dim),
+                  FadeIn(dw_n), FadeIn(dw_bn), run_time=0.7)
+        
+        self.wait(2)
+
+
+        # → Project 1x1 cuboid
+        self.play(GrowArrow(arr3),
+                  self.camera.frame.animate.shift(RIGHT * 1.8),
+                  run_time=0.5)
+        self.play(GrowFromCenter(pw_cuboid), Write(pw_dim),
+                  FadeIn(pw_n), FadeIn(pw_bn), run_time=0.7)
+
+        self.wait(2)
+
+
+        # arr4 first — arrow exits pointwise toward Avg Pool
+        self.play(GrowArrow(arr4), run_time=0.5)
+        self.wait(0.4)
+
+        # Residual lines drop onto arr4 (no arrow tip — pure lines)
+        self.play(self.camera.frame.animate.shift(UP * 0.5).scale(1.2), run_time=0.4)
+        self.play(ShowCreation(seg_up),    run_time=0.35)
+        self.play(ShowCreation(seg_right), run_time=0.45)
+        self.play(ShowCreation(seg_down),  run_time=0.35)
+        self.play(FadeIn(skip_lbl), run_time=0.4)
+        self.wait(1.6)
+
+
+        # Bounding box + x17
+        self.play(self.camera.frame.animate.shift(LEFT * 0.8 + DOWN * 0.5).scale(1.2),
+                  run_time=0.5)
+        self.play(ShowCreation(box), run_time=0.6)
+        self.play(Write(times_label), run_time=0.5)
+        self.wait(1.4)
+
+        # Pan right → tail
+        self.play(self.camera.frame.animate.shift(RIGHT * 6.0), run_time=0.8)
+
+        self.play(FadeIn(avg_box), Write(avg_pool), self.camera.frame.animate.scale(0.8).shift(RIGHT*1.66) ,run_time=0.8)
+        self.play(GrowArrow(arr5), run_time=0.8)
+        self.play(FadeIn(fc_box),  Write(fc_layer), self.camera.frame.animate.shift(RIGHT*1.66) ,run_time=0.8)
+        self.play(GrowArrow(arr6),
+                  self.camera.frame.animate.shift(RIGHT * 2.0).scale(0.85),
+                  run_time=0.8)
+        self.play(FadeIn(sm_box), Write(softmax), run_time=0.5)
+        self.wait(1.5)
+
+        self.camera.frame.save_state()
+
+        # Zoom out — everything in frame
+        self.play(
+            self.camera.frame.animate.shift(LEFT * 7.55 + UP * 1.75).scale(1.99),
+            title.animate.shift(UP*2.23).shift(RIGHT*2).scale(2),
+            run_time=1.0,
+        )
+        self.wait(2.5)
+
