@@ -1476,3 +1476,204 @@ class GlobalAveragePooling(Scene):
         self.play(FadeIn(summary), run_time=0.5)
         self.wait(2.0)
 
+
+class CNNComputationProblem(Scene):
+    def construct(self):
+        R = "#E74C3C"
+        G = "#27AE60"
+        Y = "#F39C12"
+        B = "#3498DB"
+
+        self.camera.frame.set_height(9).move_to(ORIGIN).scale(0.85).shift(DOWN*0.33+RIGHT*1.56)
+
+        # ═══════════════════════════════════════════════
+        # PART 1 — Bar chart: CNN model sizes
+        # ═══════════════════════════════════════════════
+
+        models = [
+            ("AlexNet",      61.0, "#3498DB"),
+            ("VGG-16",      138.0, "#E74C3C"),
+            ("GoogLeNet",     6.8, "#9B59B6"),
+            ("ResNet-50",    25.6, "#E67E22"),
+            ("ResNet-152",   60.3, "#F39C12"),
+        ]
+
+        bar_max = 5.5
+        bar_h = 0.55
+        x_left = -0.3
+        sy = 2.0
+        row_gap = 1.2
+
+        all_lbl, all_bar, all_num = [], [], []
+
+        for i, (name, params, clr) in enumerate(models):
+            y = sy - i * row_gap
+
+            lbl = Text(name, font_size=45, weight=BOLD).set_color(clr)
+            lbl.move_to(np.array([x_left - 2.2, y, 0]))
+            lbl.align_to(np.array([x_left - 4.0, 0, 0]), LEFT)
+
+            w = max((params / 138.0) * bar_max, 0.18)
+            bar = RoundedRectangle(width=w, height=bar_h, corner_radius=0.07)
+            bar.set_fill(clr, opacity=0.75)
+            bar.set_stroke(clr, width=2)
+            bar.align_to(np.array([x_left, 0, 0]), LEFT)
+            bar.set_y(y)
+
+            num = Text(f"{params} M", font_size=38, weight=BOLD).set_color(WHITE)
+            num.next_to(bar, RIGHT, buff=0.35)
+
+            all_lbl.append(lbl)
+            all_bar.append(bar)
+            all_num.append(num)
+
+            self.play(FadeIn(lbl), GrowFromEdge(bar, LEFT),
+                      FadeIn(num), run_time=0.35)
+
+        self.wait(2)
+
+        # Highlight VGG as the monster
+        vgg_hl = SurroundingRectangle(
+            VGroup(all_lbl[1], all_bar[1], all_num[1]),
+            buff=0.1, stroke_width=5, color="#00ff00", fill_color=GREEN, fill_opacity=0.2).scale(1.05)
+
+        self.play(ShowCreation(vgg_hl), run_time=1)
+        self.wait(1.8)
+
+        googlenet = SurroundingRectangle(
+            VGroup(all_lbl[2], all_bar[2], all_num[2]),
+            buff=0.1, stroke_width=5, color="#00ff00", fill_color=GREEN, fill_opacity=0.2).scale(1.1)
+
+        self.play(ReplacementTransform(vgg_hl,googlenet ))
+        self.wait(1.8)
+
+        self.play(*[FadeOut(m) for m in self.mobjects], run_time=0.4)
+
+        # ═══════════════════════════════════════════════
+        # PART 2 — GPU Server  vs  Mobile Phone
+        # ═══════════════════════════════════════════════
+        self.camera.frame.set_height(9).move_to(ORIGIN).shift(DOWN).scale(0.88).shift(UP*0.17)
+
+        # ─── GPU SERVER (left) ───
+        server = VGroup()
+        srv_body = Rectangle(width=2.2, height=3.2)
+        srv_body.set_fill("#2C3E50", opacity=0.9)
+        srv_body.set_stroke("#95A5A6", width=2)
+        server.add(srv_body)
+
+        for i in range(4):
+            shelf = Rectangle(width=1.9, height=0.55)
+            shelf.set_fill("#34495E", opacity=0.8)
+            shelf.set_stroke("#7F8C8D", width=1)
+            shelf.move_to(srv_body.get_top() + DOWN * (0.45 + i * 0.7))
+            server.add(shelf)
+            for j in range(3):
+                led = Dot(radius=0.05, color=G)
+                led.set_stroke(width=0)
+                led.move_to(shelf.get_left() + RIGHT * (0.25 + j * 0.25))
+                server.add(led)
+
+        server.move_to(LEFT * 3 + DOWN * 0.2)
+
+        srv_label = Text("GPU Server", font_size=38, weight=BOLD).set_color(G)
+        srv_label.next_to(server, DOWN, buff=0.3)
+        srv_specs = Text("NVIDIA A100\n80 GB VRAM\n250 Watts", font_size=34).set_color(GREY_B)
+        srv_specs.next_to(srv_label, DOWN, buff=0.25)
+
+        # ─── MOBILE PHONE (right) ───
+        phone = VGroup()
+        ph_body = RoundedRectangle(width=1.3, height=2.4, corner_radius=0.15)
+        ph_body.set_fill("#1A1A2E", opacity=0.9)
+        ph_body.set_stroke("#7F8C8D", width=2)
+        ph_screen = RoundedRectangle(width=1.05, height=1.8, corner_radius=0.08)
+        ph_screen.set_fill("#16213E", opacity=0.8)
+        ph_screen.set_stroke("#555", width=1)
+        ph_screen.move_to(ph_body).shift(UP * 0.1)
+        ph_btn = Circle(radius=0.08)
+        ph_btn.set_fill("#555", opacity=0.8)
+        ph_btn.set_stroke("#777", width=1)
+        ph_btn.move_to(ph_body.get_bottom() + UP * 0.18)
+        phone.add(ph_body, ph_screen, ph_btn)
+        phone.move_to(RIGHT * 3 + DOWN * 0.2)
+
+        ph_label = Text("Mobile Phone", font_size=38, weight=BOLD).set_color(B)
+        ph_label.next_to(phone, DOWN, buff=0.3)
+        ph_specs = Text("2-4 GB RAM\n3 Watts\nTiny GPU", font_size=34).set_color(GREY_B)
+        ph_specs.next_to(ph_label, DOWN, buff=0.25)
+
+        vs_txt = Text("vs", font_size=60, weight=BOLD).set_color(GREY_A)
+        vs_txt.move_to(DOWN * 0.2)
+
+        self.play(FadeIn(server), FadeIn(srv_label), FadeIn(srv_specs), run_time=0.7)
+        self.play(FadeIn(vs_txt), run_time=0.3)
+        self.play(FadeIn(phone), FadeIn(ph_label), FadeIn(ph_specs), run_time=0.7)
+        self.wait(1.0)
+
+        # GPU: green checkmark
+        check = Tex(r"\checkmark", color=G).scale(3).set_color(G)
+        check.next_to(server, UP, buff=0.15)
+        self.play(FadeIn(check, scale=1.5), run_time=0.5)
+
+        # Phone: red X + glow
+        cross = Tex(r"\times", color=R).scale(3).set_color(R)
+        cross.next_to(phone, UP, buff=0.35)
+
+        self.play(
+            FadeIn(cross, scale=1.5),
+            ph_body.animate.set_stroke(R, width=4),
+            ph_screen.animate.set_fill(R, opacity=0.15),
+            run_time=0.7)
+        self.wait(1.8)
+
+
+        # Row of small devices — all failing
+        small_devs = VGroup()
+        dev_names = ["Smart Watch", "Drone", "IoT Sensor"]
+        dev_clrs  = ["#9B59B6", "#E67E22", "#1ABC9C"]
+        for name, clr in zip(dev_names, dev_clrs):
+            lbl = Text(name, font_size=32, weight=BOLD).set_color(clr)
+            box = RoundedRectangle(
+                width=lbl.get_width() + 0.6,
+                height=lbl.get_height() + 0.5,
+                corner_radius=0.1,
+            )
+            box.set_fill(clr, opacity=0.15)
+            box.set_stroke(clr, width=2)
+            lbl.move_to(box)
+            x_mark = Tex(r"\times").scale(2.5).set_color(R)
+            x_mark.next_to(box, RIGHT, buff=0.25)
+            small_devs.add(VGroup(box, lbl, x_mark))
+
+        small_devs.arrange(RIGHT, buff=0.9)
+        small_devs.to_edge(DOWN, buff=0.55).shift(DOWN * 2.12)
+
+        self.play(
+            self.camera.frame.animate.scale(1.15).shift(DOWN * 0.8),
+            *[FadeIn(d) for d in small_devs],
+            run_time=0.8,
+        )
+        self.wait(1.8)
+
+        self.play(*[FadeOut(m) for m in self.mobjects], run_time=0.4)
+
+        # ═══════════════════════════════════════════════
+        # PART 3 — Punchline
+        # ═══════════════════════════════════════════════
+        self.camera.frame.set_height(9).move_to(ORIGIN)
+
+        line1 = Text("We need something", font_size=56, weight=BOLD).set_color(WHITE)
+        line2 = Text("Lightweight.  Fast.  Efficient.", font_size=48, weight=BOLD)
+        line2.set_color(G)
+        lines = VGroup(line1, line2).arrange(DOWN, buff=0.5)
+        lines.move_to(UP * 0.2)
+
+        self.play(Write(line1), run_time=0.6)
+        self.play(Write(line2), run_time=0.8)
+
+        box = SurroundingRectangle(line2, buff=0.22, stroke_width=3, color=G)
+        box.set_fill(G, opacity=0.06)
+        box.round_corners(0.15)
+        self.play(ShowCreation(box), run_time=0.4)
+        self.play(line2.animate.scale(1.08), box.animate.scale(1.08),
+                  rate_func=there_and_back, run_time=0.5)
+        self.wait(2.0)
