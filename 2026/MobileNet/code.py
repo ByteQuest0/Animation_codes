@@ -1406,3 +1406,73 @@ class MobileNetV2(Scene):
         )
         self.wait(2.5)
 
+
+class GlobalAveragePooling(Scene):
+    def construct(self):
+        CH_CLR = ["#FF4444", "#00E676", "#42A5F5"]
+        PCS = 0.45
+
+        self.camera.frame.set_height(10).move_to(ORIGIN).scale(0.93).shift(DOWN*0.19)
+
+        # ── TITLE ──
+        title = Text("Global Average Pooling", font_size=56, weight=BOLD)
+        title.set_color_by_gradient("#E74C3C", "#F39C12", "#2980B9")
+        title.to_edge(UP, buff=0.3)
+        sub = Text("Collapse spatial dims to one value per channel",
+                    font_size=38, weight=BOLD).set_color(YELLOW)
+        sub.next_to(title, DOWN, buff=0.3)
+        self.play(Write(title), run_time=0.7)
+        self.play(FadeIn(sub), run_time=0.4)
+
+        # ── 5x5x3 TRUE 3D CUBOID ──
+        inp = make_cuboid_block(5, 5, 3, CH_CLR,
+                                pos=LEFT * 2.5 + DOWN * 0.5, cs=PCS)
+        inp_dim = Text("5 x 5 x 3", font_size=42, weight=BOLD)
+        inp_dim.next_to(inp, DOWN, buff=0.55)
+        inp_tag = Text("Feature Map", font_size=36,
+                        weight=BOLD).set_color(GREY_A)
+        inp_tag.next_to(inp_dim, DOWN, buff=0.3)
+
+        self.play(GrowFromCenter(inp), Write(inp_dim),
+                  run_time=0.8)
+        self.wait(1.0)
+
+        # ── 1x1x3 OUTPUT CUBOID (target) ──
+        out = make_cuboid_block(1, 1, 3, CH_CLR,
+                                pos=RIGHT * 3.5 + DOWN * 0.5, cs=PCS)
+        out_dim = Text("1 x 1 x 3", font_size=42,
+                        weight=BOLD).set_color(YELLOW)
+        out_dim.next_to(out, DOWN, buff=0.55)
+
+        # Arrow between them
+        arr = Arrow(
+            inp.get_right() + RIGHT * 0.3,
+            out.get_left() + LEFT * 0.3,
+            buff=0, thickness=4, color=YELLOW)
+        pool_lbl = Text("Global\nAvg Pool", font_size=46,
+                         weight=BOLD).set_color(TEAL)
+        pool_lbl.next_to(arr, UP, buff=0.32)
+
+        self.play(GrowArrow(arr), FadeIn(pool_lbl), run_time=0.6)
+        self.wait(0.5)
+
+        # ── POOLING: direct transform 5x5x3 → 1x1x3 ──
+        inp_copy = inp.copy()
+        inp_copy.set_z_index(20)
+        self.add(inp_copy)
+        self.play(
+            Transform(inp_copy, out),
+            run_time=1.2,
+            rate_func=smooth)
+        self.remove(inp_copy)
+        self.add(out)
+        self.play(Write(out_dim), run_time=0.5)
+        self.wait(1.5)
+
+        # ── SUMMARY LINE ──
+        summary = Text("25 values per channel -> 1 average each",
+                        font_size=50, weight=BOLD).set_color(GREEN_B)
+        summary.to_edge(DOWN, buff=0.3).shift(DOWN*0.25)
+        self.play(FadeIn(summary), run_time=0.5)
+        self.wait(2.0)
+
